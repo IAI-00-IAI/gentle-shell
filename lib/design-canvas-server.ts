@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
-import { watch, readFileSync, readdirSync, realpathSync, statSync, type FSWatcher, type ReaddirFsEntry, type Stats } from "node:fs";
+import { watch, readFileSync, readdirSync, realpathSync, statSync, type Dirent, type FSWatcher, type Stats } from "node:fs";
 import { open, readFile, realpath, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, isAbsolute, join, sep } from "node:path";
@@ -471,7 +471,7 @@ export type DesignListing = { slug: string; title: string; mtime: number; valid:
  */
 export function listDesignEntries(designRoot: string): DesignListing[] {
 	let root: string | undefined;
-	let entries: ReaddirFsEntry[];
+	let entries: Dirent[];
 	try {
 		root = realpathSync(designRoot);
 		entries = readdirSync(root, { withFileTypes: true });
@@ -561,6 +561,8 @@ export function hasSystemTokens(designRoot: string): boolean {
 		throw error;
 	}
 }
+
+export { isValidBindHost, isValidPublicHost, isLoopbackBindHost, isWildcardBindHost };
 
 export async function startDesignCanvasServer(options: DesignCanvasServerOptions): Promise<DesignCanvasServer> {
 	if (typeof options.designRoot !== "string" || !isAbsolute(options.designRoot)) throw new Error("designRoot must be an absolute path");

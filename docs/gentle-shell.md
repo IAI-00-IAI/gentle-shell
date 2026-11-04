@@ -469,6 +469,19 @@ GENTLE_DESIGN_API_KEY=your-api-key
 
 `GENTLE_DESIGN_HOST` is where Node listens. `GENTLE_DESIGN_PUBLIC_HOST` is the host used in returned URLs, allowed `Host` headers, allowed `Origin` values, and CSP; by default it is the bind host, or `127.0.0.1` when the bind host is a wildcard. When `GENTLE_DESIGN_HOST` is outside loopback or is a wildcard address, `GENTLE_DESIGN_API_KEY` is required before the server opens its port.
 
+The same canvas settings can also be configured from the Pi UI without changing environment variables:
+
+```text
+/gentle:design config show
+/gentle:design config reset
+/gentle:design config host <host>
+/gentle:design config public-host <host>
+/gentle:design config key
+/gentle:design config key <apiKey>
+```
+
+The UI configuration is kept only for the current Pi session and is not written to a persistent file. It takes precedence over `GENTLE_DESIGN_HOST`, `GENTLE_DESIGN_PUBLIC_HOST`, and `GENTLE_DESIGN_API_KEY`. When `/gentle:design open` starts a canvas bound outside loopback and no API key is available, it asks for the API key; the entered key is remembered for the rest of the session, so refreshed opens, corrections, and repeated opens do not ask again. If the effective canvas configuration changes while a canvas is running, the old canvas is closed and restarted with the new configuration.
+
 For browser use, open the login URL:
 
 ```text

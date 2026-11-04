@@ -36,10 +36,16 @@ T5. Wire `GENTLE_DESIGN_HOST`, `GENTLE_DESIGN_PUBLIC_HOST`, and `GENTLE_DESIGN_A
 
 T6. Add tests for default behavior, remote host, login, Bearer auth, and denied access.
 
-T7. Update `odd/tasks/gentle-design.md`, `docs/gentle-shell.md`, and `README.md`.
+T7. Update `odd/tasks/gentle-design.md`, `docs/gentle-shell.md`, and `README.md`. Done: `609a51cbb`.
+
+## Delivery
+
+Forecast: about 419 authored changed lines. Strategy: `single-pr` for one coherent canvas-server behavior, with `609a51cbb` as the single PR slice unless follow-ups are added.
 
 ## Log
 
 L1. User asked how to access the `gentle-design` canvas from another machine.
 
 L2. User chose option 3: configurable host plus reinforced authentication.
+
+L3. Implemented T1-T6 and committed `609a51cbb`. The full `design-canvas-server.test.ts` suite passed with `node --test --test-timeout=30000 --test-reporter=tap tests/design-canvas-server.test.ts` before documentation was committed.

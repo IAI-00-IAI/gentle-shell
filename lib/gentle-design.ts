@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { designCommentBatchContent, designCommentContent, hasSystemTokens, listDesignEntries, readDesignManifest, resolveSystemBoard, startDesignCanvasServer, type DesignArtboard, type DesignCanvasServer, type DesignCanvasServerOptions, type DesignSessionContent } from "./design-canvas-server.ts";
+import { designCommentBatchContent, designCommentContent, hasSystemTokens, isValidBindHost, isValidPublicHost, isLoopbackBindHost, isWildcardBindHost, listDesignEntries, readDesignManifest, resolveSystemBoard, startDesignCanvasServer, type DesignArtboard, type DesignCanvasServer, type DesignCanvasServerOptions, type DesignSessionContent } from "./design-canvas-server.ts";
 import { createDesignCommentStore, DesignCommentsError, type StoredDesignComment } from "./design-comments.ts";
 import { createDesignHandoffStore, DesignHandoffsError, sendDesignHandoff, type DesignHandoff, type DesignHandoffDelivery, type DesignHandoffStatus } from "./design-handoffs.ts";
 import { openInBrowser, type OpenInBrowserResult } from "./design-open-browser.ts";
@@ -11,7 +11,7 @@ import { detectDesignSources, staleDesignSources } from "./design-sources.ts";
 
 export const DESIGN_SKILL_NAME = "gentle-design";
 
-export const DESIGN_SUBCOMMANDS = ["open", "stop", "sync", "implement"] as const;
+export const DESIGN_SUBCOMMANDS = ["open", "stop", "sync", "config", "implement"] as const;
 export type DesignSubcommand = (typeof DESIGN_SUBCOMMANDS)[number];
 
 export type DesignArgs =
@@ -45,7 +45,7 @@ export function hasSystemBoard(cwd: string): boolean {
 }
 
 export const DESIGN_HELP =
-	"Design HTML artboards with any model: /gentle:design <brief> starts a design run; no arguments open the latest design (or the system board alone) on the local canvas. Subcommands: open [slug], stop, sync (write design/system.md and design/system.html from the project's design sources; the canvas shows that system board first), implement <slug>/<artboard> (hand an artboard off to the project's real stack, also from the canvas Implement button).";
+	"Design HTML artboards with any model: /gentle:design <brief> starts a design run; no arguments open the latest design (or the system board alone) on the local canvas. Subcommands: open [slug], stop, sync (write design/system.md and design/system.html from the project's design sources; the canvas shows that system board first), config (show, reset, host <host>, public-host <host>, key, key <apiKey>), implement <slug>/<artboard> (hand an artboard off to the project's real stack, also from the canvas Implement button). config controls the session canvas configuration; key is kept only for the current session.";
 
 /** What /gentle:design sync asks the skill to do; it rides designRunMessage like a brief. */
 export const DESIGN_SYNC_REQUEST =
@@ -205,9 +205,37 @@ export async function sendDesignImplement(cwd: string, plan: Extract<DesignImple
 	});
 }
 
+export type DesignCanvasConfig = {
+	/** TCP bind address. Defaults to loopback. */
+	host?: string;
+	/** Host used in returned URLs and trusted origins. Defaults to host. */
+	publicHost?: string;
+	/** Session-only API key for remote canvas access. */
+	apiKey?: string;
+};
+
+export type DesignCanvasConfigSource = "session" | "environment" | "default";
+
+export type DesignCanvasConfigSummary = {
+	bindHost: string;
+	publicHost: string;
+	bindHostSource: DesignCanvasConfigSource;
+	publicHostSource: DesignCanvasConfigSource;
+	apiKeySet: boolean;
+	apiKeyMasked: string;
+	apiKeySource: DesignCanvasConfigSource | "none";
+};
+
+export interface DesignCanvasUIInput {
+	hasUI: boolean;
+	input(title: string, placeholder?: string): Promise<string | undefined>;
+}
+
 export interface DesignCanvasDeps {
 	startServer?: (options: DesignCanvasServerOptions) => Promise<DesignCanvasServer>;
 	openBrowser?: (url: string) => Promise<OpenInBrowserResult>;
+	/** Optional UI used to ask for the remote canvas API key only when needed. */
+	ui?: DesignCanvasUIInput;
 }
 
 /**
@@ -227,6 +255,55 @@ export interface DesignCanvas {
 	stop(): Promise<boolean>;
 	/** The URL the running canvas last showed; undefined when none is running. */
 	url(): string | undefined;
+	/** Sets a session-only design canvas configuration. */
+	setDesignCanvasConfig(options: Partial<DesignCanvasConfig>): void;
+	/** Removes all session design canvas configuration. */
+	resetDesignCanvasConfig(): void;
+	/** Reports the effective canvas configuration without exposing the raw API key. */
+	effectiveDesignCanvasConfig(): DesignCanvasConfigSummary;
+}
+
+export function maskDesignApiKey(value: string | null): string {
+	if (!value) return "";
+	if (value.length <= 4) return "****";
+	return `...${value.slice(-4)}`;
+}
+
+function resolveDesignCanvasConfig(config: DesignCanvasConfig): {
+	bindHost: string;
+	publicHost: string;
+	apiKey: string | null;
+} {
+	const bindHost = optionalEnv(config.host ?? "") ?? optionalEnv(process.env.GENTLE_DESIGN_HOST) ?? "127.0.0.1";
+	const publicHost =
+		optionalEnv(config.publicHost ?? "") ?? optionalEnv(process.env.GENTLE_DESIGN_PUBLIC_HOST) ?? (isWildcardBindHost(bindHost) ? "127.0.0.1" : bindHost);
+	const apiKey = optionalEnv(config.apiKey ?? "") ?? optionalEnv(process.env.GENTLE_DESIGN_API_KEY) ?? null;
+	return { bindHost, publicHost, apiKey };
+}
+
+function requiresDesignCanvasApiKey(bindHost: string): boolean {
+	return !isLoopbackBindHost(bindHost);
+}
+
+type DesignCanvasResolvedConfig = {
+	bindHost: string;
+	publicHost: string;
+	apiKey: string | null;
+};
+
+function sameDesignCanvasConfig(a: DesignCanvasResolvedConfig | undefined, b: DesignCanvasResolvedConfig): boolean {
+	return a !== undefined && a.bindHost === b.bindHost && a.publicHost === b.publicHost && a.apiKey === b.apiKey;
+}
+
+async function askDesignCanvasApiKey(ui: DesignCanvasUIInput | undefined, title: string, placeholder?: string): Promise<string | null> {
+	if (!ui || !ui.hasUI) return null;
+	try {
+		const value = await ui.input(title, placeholder);
+		const trimmed = value?.trim();
+		return trimmed ? trimmed : null;
+	} catch {
+		return null;
+	}
 }
 
 /** The canvas of `slug`, or the root canvas (system board only) when slug is null. */
@@ -242,7 +319,15 @@ function canvasUrl(server: DesignCanvasServer, slug: string | null): string {
 export function createDesignCanvas(deliver: (message: DesignSessionContent) => DesignHandoffDelivery | Promise<DesignHandoffDelivery>, deps: DesignCanvasDeps = {}): DesignCanvas {
 	const startServer = deps.startServer ?? startDesignCanvasServer;
 	const openBrowser = deps.openBrowser ?? ((url: string) => openInBrowser(url));
-	let running: { root: string; server: Promise<DesignCanvasServer>; url?: string } | undefined;
+	const ui = deps.ui;
+	const designCanvasConfig: DesignCanvasConfig = { host: undefined, publicHost: undefined, apiKey: undefined };
+	const resolvedConfig = () => resolveDesignCanvasConfig(designCanvasConfig);
+	let running: {
+		root: string;
+		server: Promise<DesignCanvasServer>;
+		url?: string;
+		activeConfig: DesignCanvasResolvedConfig;
+	} | undefined;
 
 	async function stop(): Promise<boolean> {
 		const current = running;
@@ -255,13 +340,15 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 
 	async function serverFor(cwd: string): Promise<DesignCanvasServer> {
 		const root = join(cwd, "design");
-		// A new session cwd means a different design root, so the old server goes.
-		if (running && running.root !== root) await stop();
+		const requested = resolvedConfig();
+		// A new session cwd means a different design root; a different canvas configuration means
+		// the old server cannot keep the session's current bind host, public host, or API key.
+		if (running && (running.root !== root || !sameDesignCanvasConfig(running.activeConfig, requested))) await stop();
 		if (!running) {
 			const server = startServer({
-				host: optionalEnv(process.env.GENTLE_DESIGN_HOST),
-				publicHost: optionalEnv(process.env.GENTLE_DESIGN_PUBLIC_HOST),
-				apiKey: optionalEnv(process.env.GENTLE_DESIGN_API_KEY),
+				host: requested.bindHost,
+				publicHost: requested.publicHost,
+				apiKey: requested.apiKey ?? undefined,
 				designRoot: root,
 				onComment: async (comment) => { await deliver(designCommentContent(comment)); },
 				onComments: async (batch) => { await deliver(designCommentBatchContent(batch)); },
@@ -273,8 +360,10 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 					return deliver(plan.message);
 				},
 			});
-			running = { root, server };
-			server.catch(() => { if (running?.server === server) running = undefined; });
+			running = { root, server, activeConfig: { ...requested } };
+			server.catch(() => {
+				if (running?.server === server) running = undefined;
+			});
 		}
 		return running.server;
 	}
@@ -290,6 +379,16 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 		if (slug !== null && !designs.some((design) => design.slug === slug)) {
 			return { message: `No design "${slug}" in design/. Available: ${designs.map((design) => design.slug).join(", ")}.`, level: "warning" };
 		}
+		// A remote canvas needs an API key before the first start. The key is asked once here and
+		// remembered for the rest of the session, so corrections and refreshed opens do not ask again.
+		const requestedConfig = resolvedConfig();
+		if (requiresDesignCanvasApiKey(requestedConfig.bindHost) && requestedConfig.apiKey === null) {
+			const key = await askDesignCanvasApiKey(ui, "Design canvas API key", "This key is kept only for the current session and is needed to access the canvas from outside this machine.");
+			if (!key) {
+				return { message: "No API key was entered; the design canvas was not started.", level: "error" };
+			}
+			designCanvasConfig.apiKey = key;
+		}
 		// Only a server that was already running can have a canvas page of its own connected.
 		const reused = running?.root === join(cwd, "design");
 		let server: DesignCanvasServer;
@@ -302,7 +401,7 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 		if (running) running.url = url;
 		let loginUrl: string | undefined;
 		if (server.apiKeyEnabled) {
-			const apiKey = process.env.GENTLE_DESIGN_API_KEY;
+			const apiKey = resolvedConfig().apiKey;
 			if (apiKey) loginUrl = `${server.baseUrl}login?key=${encodeURIComponent(apiKey)}`;
 		}
 		const loginLine = loginUrl ? `\nDesign login: ${loginUrl}` : "";
@@ -315,7 +414,57 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 		return { message: `Design canvas: ${url}${loginLine}\nThe browser could not be opened${reason}. Open the URL manually.`, level: "warning", url, opened: false };
 	}
 
-	return { open, stop, url: () => running?.url };
+	function setDesignCanvasConfig(options: Partial<DesignCanvasConfig>): void {
+		if (options.host !== undefined) {
+			const host = optionalEnv(options.host);
+			if (host === undefined || !isValidBindHost(host)) throw new Error(`GENTLE_DESIGN_HOST must be a loopback or wildcard IP address, got ${options.host}`);
+			if (host) designCanvasConfig.host = host;
+			else delete designCanvasConfig.host;
+		}
+		if (options.publicHost !== undefined) {
+			const publicHost = optionalEnv(options.publicHost);
+			if (publicHost === undefined || !isValidPublicHost(publicHost)) throw new Error(`GENTLE_DESIGN_PUBLIC_HOST must be a valid host, got ${options.publicHost}`);
+			if (publicHost) designCanvasConfig.publicHost = publicHost;
+			else delete designCanvasConfig.publicHost;
+		}
+		if (options.apiKey !== undefined) {
+			if (options.apiKey === "") delete designCanvasConfig.apiKey;
+			else designCanvasConfig.apiKey = options.apiKey.trim();
+		}
+	}
+
+	function resetDesignCanvasConfig(): void {
+		delete designCanvasConfig.host;
+		delete designCanvasConfig.publicHost;
+		delete designCanvasConfig.apiKey;
+	}
+
+	function sourceFor(session: unknown, environment: unknown): DesignCanvasConfigSource {
+		if (session) return "session";
+		if (environment) return "environment";
+		return "default";
+	}
+
+	function apiKeySource(session: unknown, resolvedKey: string | null): "none" | DesignCanvasConfigSource {
+		if (resolvedKey === null) return "none";
+		if (session) return "session";
+		return "environment";
+	}
+
+	function effectiveDesignCanvasConfig(): DesignCanvasConfigSummary {
+		const resolved = resolvedConfig();
+		return {
+			bindHost: resolved.bindHost,
+			publicHost: resolved.publicHost,
+			bindHostSource: sourceFor(designCanvasConfig.host, process.env.GENTLE_DESIGN_HOST),
+			publicHostSource: sourceFor(designCanvasConfig.publicHost, process.env.GENTLE_DESIGN_PUBLIC_HOST),
+			apiKeySet: resolved.apiKey === null ? false : true,
+			apiKeyMasked: maskDesignApiKey(resolved.apiKey),
+			apiKeySource: apiKeySource(designCanvasConfig.apiKey, resolved.apiKey),
+		};
+	}
+
+	return { open, stop, url: () => running?.url, setDesignCanvasConfig, resetDesignCanvasConfig, effectiveDesignCanvasConfig };
 }
 
 export const DESIGN_COMMENTS_TOOL_NAME = "gentle_design_comments";

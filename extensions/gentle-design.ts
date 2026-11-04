@@ -56,6 +56,20 @@ function isIdle(ctx: ExtensionContext | undefined): boolean {
 	}
 }
 
+function askApiKey(ctx: ExtensionContext, title: string, placeholder?: string): Promise<string | null> {
+	if (!ctx.hasUI) return Promise.resolve(null);
+	return new Promise((resolve) => {
+		try {
+			ctx.ui
+				.input(title, placeholder)
+				.then((value) => resolve(value?.trim() ? value.trim() : null))
+				.catch(() => resolve(null));
+		} catch {
+			resolve(null);
+		}
+	});
+}
+
 export default function gentleDesign(pi: ExtensionAPI, deps: GentleDesignDeps = {}): void {
 	const skillPath = deps.skillPath ?? fileURLToPath(new URL("../skills/design/SKILL.md", import.meta.url));
 	// Canvas comments arrive between commands; the last command's context answers whether the agent is busy.
@@ -95,6 +109,64 @@ export default function gentleDesign(pi: ExtensionAPI, deps: GentleDesignDeps = 
 			if (parsed.name === "open") return open(ctx, parsed.rest || undefined);
 			if (parsed.name === "stop") {
 				ctx.ui.notify((await canvas.stop()) ? "Design canvas stopped." : "No design canvas is running.", "info");
+				return;
+			}
+			if (parsed.name === "config") {
+				const [configCommand, ...configParts] = parsed.rest.split(/\s+/).filter((part) => part !== "");
+				const configValue = configParts.join(" ");
+				if (configCommand === "show") {
+					const summary = canvas.effectiveDesignCanvasConfig();
+					ctx.ui.notify(
+					[
+						`Canvas bind host: ${summary.bindHost} (${summary.bindHostSource})`,
+						`Canvas public host: ${summary.publicHost} (${summary.publicHostSource})`,
+						summary.apiKeySet ? `API key: ${summary.apiKeyMasked} (${summary.apiKeySource})` : "API key: none",
+					].join("\n"),
+					"info",
+				);
+					return;
+				}
+				if (configCommand === "reset") {
+					canvas.resetDesignCanvasConfig();
+					ctx.ui.notify("Design canvas configuration reset to defaults for this session.", "info");
+					return;
+				}
+				const configLabel = (key: "host" | "public-host" | "key") => {
+					if (key === "host") return "bind host";
+					if (key === "public-host") return "public host";
+					return "API key";
+				};
+				const setConfig = async (key: "host" | "public-host" | "key", rawValue: string | undefined): Promise<void> => {
+					if (key !== "key" && (rawValue === undefined || rawValue.trim() === "")) {
+						const target = key === "host" ? "host" : "public host";
+						ctx.ui.notify(`Usage: /gentle:design config ${key} <${target}>`, "warning");
+						return;
+					}
+					try {
+						if (key === "key") {
+							const hasValue = rawValue !== undefined && rawValue.trim() !== "";
+							const value = hasValue ? rawValue.trim() : await askApiKey(ctx, "Design canvas API key", "This key is kept only for the current session.");
+							if (!value) {
+								ctx.ui.notify("No design canvas API key was entered; it was not stored.", "warning");
+								return;
+							}
+							canvas.setDesignCanvasConfig({ apiKey: value });
+						} else if (key === "host") {
+							canvas.setDesignCanvasConfig({ host: rawValue.trim() });
+						} else {
+							canvas.setDesignCanvasConfig({ publicHost: rawValue.trim() });
+						}
+						ctx.ui.notify(`Design canvas ${configLabel(key)} set for this session.`, "info");
+					} catch (error) {
+						ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
+					}
+				};
+				const configKey = configCommand === "host" || configCommand === "public-host" || configCommand === "key" ? configCommand : undefined;
+				if (configKey === undefined) {
+					ctx.ui.notify("Usage: /gentle:design config [show | reset | host <host> | public-host <host> | key]", "warning");
+					return;
+				}
+				await setConfig(configKey, configValue);
 				return;
 			}
 			if (parsed.name === "sync") {

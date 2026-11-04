@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -45,17 +45,23 @@ function fakePi(skillLoaded = true) {
 	return { pi, sent, emit, command: () => commands.get(DESIGN_COMMAND_NAME)!, tool: (name: string) => tools.get(name) };
 }
 
-function fakeContext(cwd: string, idle = true) {
+function fakeContext(cwd: string, idle = true, uiInput = () => "") {
 	const notices: Array<{ message: string; level?: string }> = [];
 	const state = { idle };
+	const inputCalls = { count: 0 };
+	let nextInput = uiInput;
 	const ctx = {
 		hasUI: true,
 		cwd,
 		isIdle: () => state.idle,
 		sessionManager: { getCwd: () => cwd },
-		ui: { notify: (message: string, level?: string) => notices.push({ message, level }) },
+		ui: {
+			notify: (message: string, level?: string) => notices.push({ message, level }),
+			input: async (_title: string, _placeholder?: string) => { inputCalls.count += 1; return nextInput(); },
+		},
 	} as unknown as ExtensionContext;
-	return { ctx, notices, state };
+	const setUiInput = (value: () => string) => { nextInput = value; };
+	return { ctx, notices, state, setUiInput, inputCalls };
 }
 
 const scratchDirs: string[] = [];
@@ -80,6 +86,23 @@ function writeDesign(cwd: string, slug: string, title: string, mtimeSeconds?: nu
 const unexpectedServer = async (): Promise<DesignCanvasServer> => { throw new Error("no canvas server expected"); };
 const unexpectedBrowser = async (): Promise<OpenInBrowserResult> => { throw new Error("no browser expected"); };
 
+function withNoCanvasEnv<T>(run: () => Promise<T>): Promise<T> {
+	const savedHost = process.env.GENTLE_DESIGN_HOST;
+	const savedPublicHost = process.env.GENTLE_DESIGN_PUBLIC_HOST;
+	const savedApiKey = process.env.GENTLE_DESIGN_API_KEY;
+	delete process.env.GENTLE_DESIGN_HOST;
+	delete process.env.GENTLE_DESIGN_PUBLIC_HOST;
+	delete process.env.GENTLE_DESIGN_API_KEY;
+	return run().finally(() => {
+		if (savedHost === undefined) delete process.env.GENTLE_DESIGN_HOST;
+		else process.env.GENTLE_DESIGN_HOST = savedHost;
+		if (savedPublicHost === undefined) delete process.env.GENTLE_DESIGN_PUBLIC_HOST;
+		else process.env.GENTLE_DESIGN_PUBLIC_HOST = savedPublicHost;
+		if (savedApiKey === undefined) delete process.env.GENTLE_DESIGN_API_KEY;
+		else process.env.GENTLE_DESIGN_API_KEY = savedApiKey;
+	});
+}
+
 /** Fake canvas server factory: records starts, closes, shows and the comment callback; `pages.connected` is its open canvas page count. */
 function fakeCanvas(opened: OpenInBrowserResult = { opened: true }) {
 	const starts: DesignCanvasServerOptions[] = [];
@@ -89,11 +112,14 @@ function fakeCanvas(opened: OpenInBrowserResult = { opened: true }) {
 	let closes = 0;
 	const startServer = async (options: DesignCanvasServerOptions): Promise<DesignCanvasServer> => {
 		starts.push(options);
-		const base = "http://127.0.0.1:4100/tok/";
+		const origin = "http://127.0.0.1:4100/";
+		const base = `${origin}tok/`;
 		return {
+			baseUrl: origin,
 			port: 4100,
 			token: "tok",
 			url: options.initialSlug ? `${base}d/${options.initialSlug}/` : base,
+			apiKeyEnabled: false,
 			close: async () => { closes++; },
 			connectedClients: () => pages.connected,
 			show: (slug) => { shows.push(slug); return pages.connected; },
@@ -667,7 +693,7 @@ test("the gentle_design_comments tool names a comment's screenshot for the read 
 	const { pi, tool } = fakePi();
 	gentleDesign(pi);
 	const text = toolText(await tool("gentle_design_comments")!.execute("1", { action: "list", slug: "login" }, undefined, undefined, fakeContext(cwd).ctx));
-	assert.match(text, /\[aaa111\][^]*\n  Screenshot: design\/login\/\.screenshots\/aaa111\.png \(open it with the read tool\)\n- \[bbb222\]/);
+	assert.match(text, /\[aaa111\][\s\S]*\n  Screenshot: design\/login\/\.screenshots\/aaa111\.png \(open it with the read tool\)\n- \[bbb222\]/);
 	assert.equal(text.match(/Screenshot:/g)?.length, 1);
 });
 
@@ -1311,3 +1337,199 @@ test("the skill tells the agent to report handoff progress and to name the chose
 	const source = readFileSync(SKILL_PATH, "utf8");
 	for (const part of ['action "handoff"', '"in_progress"', '"implemented"', "previewUrl", "chosen artboard"]) assert.ok(source.includes(part), `SKILL.md mentions ${part}`);
 });
+
+// /gentle:design config configures the session canvas. The API key is asked only
+// when a remote canvas needs one, stored for the current Pi session only, and
+// never written to a persistent configuration file.
+
+const DEFAULT_CONFIG_MESSAGE = [
+	"Canvas bind host: 127.0.0.1 (default)",
+	"Canvas public host: 127.0.0.1 (default)",
+	"API key: none",
+].join("\n");
+
+function latestMessage(notices: Array<{ message: string; level?: string }>): string {
+	return notices[notices.length - 1].message;
+}
+
+function findLatestError(notices: Array<{ message: string; level?: string }>): string | undefined {
+	for (let index = notices.length - 1; index >= 0; index -= 1) {
+		if (notices[index].level === "error") return notices[index].message;
+	}
+	return undefined;
+}
+
+test("config show reports the default loopback canvas when no configuration is set", async () => {
+	await withNoCanvasEnv(async () => {
+		const cwd = scratchCwd();
+		writeDesign(cwd, "login", "Login screen");
+		const { pi, command } = fakePi();
+		gentleDesign(pi);
+		const { ctx, notices } = fakeContext(cwd);
+		await command().handler("config show", ctx);
+		assert.equal(notices.length, 1);
+		assert.equal(latestMessage(notices), DEFAULT_CONFIG_MESSAGE);
+		assert.ok(!existsSync(join(cwd, "gentle-design-config.json")), "config must not write a persistent configuration file");
+		assert.ok(!existsSync(join(cwd, ".gentle-design-config.json")), "config must not write a hidden persistent configuration file");
+	});
+});
+
+test("config host and config public-host set session-only canvas configuration", async () => {
+	const cwd = scratchCwd();
+	writeDesign(cwd, "login", "Login screen");
+	const { pi, command } = fakePi();
+	gentleDesign(pi);
+	const { ctx, notices } = fakeContext(cwd);
+	await command().handler("config host 192.0.2.10", ctx);
+	await command().handler("config public-host canvas.example.com", ctx);
+	await command().handler("config show", ctx);
+	const message = latestMessage(notices);
+	assert.ok(message.includes("Canvas bind host: 192.0.2.10 (session)"), message);
+	assert.ok(message.includes("Canvas public host: canvas.example.com (session)"), message);
+});
+
+test("config rejects invalid host and public-host values before changing the session configuration", async () => {
+	await withNoCanvasEnv(async () => {
+		const cwd = scratchCwd();
+		writeDesign(cwd, "login", "Login screen");
+		const { pi, command } = fakePi();
+		gentleDesign(pi);
+		const { ctx, notices } = fakeContext(cwd);
+		await command().handler("config host not-a-host", ctx);
+		const hostError = findLatestError(notices);
+		assert.ok(hostError?.includes("GENTLE_DESIGN_HOST must be a loopback or wildcard IP address"), hostError);
+		await command().handler("config public-host not-a host", ctx);
+		const publicHostError = findLatestError(notices);
+		assert.ok(publicHostError?.includes("GENTLE_DESIGN_PUBLIC_HOST must be a valid host"), publicHostError);
+		await command().handler("config show", ctx);
+		assert.equal(latestMessage(notices), DEFAULT_CONFIG_MESSAGE);
+	});
+});
+
+test("config without a subcommand shows usage", async () => {
+	const cwd = scratchCwd();
+	writeDesign(cwd, "login", "Login screen");
+	const { pi, command } = fakePi();
+	gentleDesign(pi);
+	const { ctx, notices } = fakeContext(cwd);
+	await command().handler("config", ctx);
+	const warning = notices.find((notice) => notice.level === "warning");
+	assert.ok(warning?.message.includes("Usage: /gentle:design config [show | reset | host <host> | public-host <host> | key]"), warning?.message);
+});
+
+test("config key prompts for an API key and masks it in show", async () => {
+	await withNoCanvasEnv(async () => {
+		const cwd = scratchCwd();
+		writeDesign(cwd, "login", "Login screen");
+		const { pi, command } = fakePi();
+		gentleDesign(pi);
+		const { ctx, notices, setUiInput } = fakeContext(cwd);
+		setUiInput(() => "abcdef1234");
+		await command().handler("config key", ctx);
+		await command().handler("config show", ctx);
+		const message = latestMessage(notices);
+		assert.ok(message.includes("API key: ...1234 (session)"), message);
+	});
+});
+
+test("config key stores an explicit API key, and config reset clears it", async () => {
+	await withNoCanvasEnv(async () => {
+		const cwd = scratchCwd();
+		writeDesign(cwd, "login", "Login screen");
+		const { pi, command } = fakePi();
+		gentleDesign(pi);
+		const { ctx, notices } = fakeContext(cwd);
+		await command().handler("config key abc123", ctx);
+		await command().handler("config show", ctx);
+		const keyMessage = latestMessage(notices);
+		assert.ok(keyMessage.includes("API key: ...c123 (session)"), keyMessage);
+		await command().handler("config reset", ctx);
+		await command().handler("config show", ctx);
+		assert.equal(latestMessage(notices), DEFAULT_CONFIG_MESSAGE);
+	});
+});
+
+// /gentle:design open uses the session configuration. A remote canvas asks for an
+// API key only when one is missing, then remembers that key for the rest of the
+// current Pi session without writing it to disk.
+
+test("opening a remote canvas asks for an API key once and reuses the running canvas", async () => {
+	const cwd = scratchCwd();
+	writeDesign(cwd, "login", "Login screen");
+	const { pi, command } = fakePi();
+	const canvas = fakeCanvas();
+	const { ctx, notices, setUiInput, inputCalls } = fakeContext(cwd);
+	const ui = { hasUI: true, input: ctx.ui.input };
+	gentleDesign(pi, { ...canvas, ui });
+	await command().handler("config host 192.0.2.10", ctx);
+	setUiInput(() => "");
+	await command().handler("open login", ctx);
+	const failed = notices.find((notice) => notice.level === "error" && notice.message.includes("No API key was entered"));
+	const message = notices.map((notice) => `${notice.level ?? "info"}: ${notice.message}`).join("\n");
+	assert.ok(failed, message);
+	assert.equal(canvas.starts.length, 0, "a remote canvas must not start without an API key");
+	setUiInput(() => "secret1234");
+	await command().handler("open login", ctx);
+	assert.equal(canvas.starts.length, 1, "the remote canvas starts after the API key is supplied");
+	assert.equal(canvas.starts[0].host, "192.0.2.10");
+	assert.equal(canvas.starts[0].apiKey, "secret1234");
+	setUiInput(() => "should-not-be-asked");
+	await command().handler("open login", ctx);
+	await command().handler("open", ctx);
+	assert.equal(inputCalls.count, 2, "the key was asked while missing, then remembered after the supplied key");
+	assert.equal(canvas.starts.length, 1, "repeated opens reuse the running canvas");
+});
+
+test("changing the effective canvas configuration restarts the running canvas", async () => {
+	const cwd = scratchCwd();
+	writeDesign(cwd, "login", "Login screen");
+	const { pi, command } = fakePi();
+	const canvas = fakeCanvas();
+	gentleDesign(pi, canvas);
+	const { ctx, setUiInput } = fakeContext(cwd);
+	await command().handler("open login", ctx);
+	assert.equal(canvas.starts.length, 1);
+	await command().handler("config host 198.51.100.7", ctx);
+	await command().handler("config key other123", ctx);
+	setUiInput(() => "ignored");
+	await command().handler("open login", ctx);
+	assert.equal(canvas.starts.length, 2, "changing the canvas configuration restarts the running canvas");
+	assert.equal(canvas.starts[1].host, "198.51.100.7");
+	assert.equal(canvas.starts[1].apiKey, "other123");
+});
+
+test("config is session-only and does not leak into a new extension instance", async () => {
+	await withNoCanvasEnv(async () => {
+		const cwd1 = scratchCwd();
+		writeDesign(cwd1, "login", "Login screen");
+		const { pi, command } = fakePi();
+		const canvas1 = fakeCanvas();
+		gentleDesign(pi, canvas1);
+		const { ctx } = fakeContext(cwd1);
+		await command().handler("config host 192.0.2.10", ctx);
+		const cwd2 = scratchCwd();
+		writeDesign(cwd2, "login", "Login screen");
+		const { pi: pi2, command: command2 } = fakePi();
+		const canvas2 = fakeCanvas();
+		gentleDesign(pi2, canvas2);
+		const { ctx: ctx2, notices } = fakeContext(cwd2);
+		await command2().handler("config show", ctx2);
+		assert.ok(notices[0].message.includes("Canvas bind host: 127.0.0.1 (default)"), notices[0].message);
+	});
+});
+
+test("config does not write a persistent canvas configuration file", async () => {
+	await withNoCanvasEnv(async () => {
+		const cwd = scratchCwd();
+		writeDesign(cwd, "login", "Login screen");
+		const { pi, command } = fakePi();
+		gentleDesign(pi);
+		const { ctx, setUiInput } = fakeContext(cwd);
+		setUiInput(() => "session-key-123");
+		await command().handler("config host 192.0.2.10", ctx);
+		await command().handler("config public-host canvas.example.com", ctx);
+		await command().handler("config key", ctx);
+		assert.ok(!existsSync(join(cwd, "gentle-design-config.json")), "config must not write gentle-design-config.json");
+		assert.ok(!existsSync(join(cwd, ".gentle-design-config.json")), "config must not write .gentle-design-config.json");
+	});
+})

@@ -16,7 +16,7 @@ Requirements S2-S8 come from the plan the user accepted (L2, L3). Wording outsid
   - reuse `design/system.md` tokens when present;
   - when iterating, edit only the targeted artboard; "save and try a different approach" adds a new artboard and keeps the previous ones;
   - when the user wants to tune something, add sliders or controls with a "Copy as prompt" button.
-- **S3 Command.** `/gentle:design <brief>` starts a design run with the skill. `/gentle:design` with no arguments opens the most recent design in the session cwd, or prints usage when there is none. The subcommands are `open [slug]`, `stop`, `sync` and `implement <slug>/<artboard>`. The help text, the README feature table and `docs/gentle-shell.md` describe all of them.
+- **S3 Command.** `/gentle:design <brief>` starts a design run with the skill. `/gentle:design` with no arguments opens the most recent design in the session cwd, or prints usage when there is none. The subcommands are `open [slug]`, `stop`, `sync`, `config`, and `implement <slug>/<artboard>`. `config` controls the session canvas configuration: `show`, `reset`, `host <host>`, `public-host <host>`, `key`, and `key <apiKey>`. The help text, the README feature table, and `docs/gentle-shell.md` describe all of them.
 - **S4 Local canvas.** `/gentle:design open [slug]` starts a local server and opens the default browser on a canvas:
   - every artboard shows side by side, at its manifest size, with its title and tradeoff;
   - zoom (buttons, and Ctrl/Cmd + wheel), pan and fit;
@@ -24,7 +24,8 @@ Requirements S2-S8 come from the plan the user accepted (L2, L3). Wording outsid
 - **S5 Comments back to the session.** In comment mode, clicking an element in an artboard and typing a comment sends the session one message with: the design slug, the artboard file, a CSS selector for the element, a short text excerpt of the element, and the comment. While the agent is busy, the message is queued as a follow-up. The agent edits that artboard, and the canvas reloads.
 - **S6 Canvas server safety.** The server:
   - by default binds `127.0.0.1` on a random port, preserving the original local-only behavior;
-  - when `GENTLE_DESIGN_HOST` is set, binds the configured host, but requires `GENTLE_DESIGN_API_KEY` before opening the port when that host is outside loopback or is a wildcard address;
+  - accepts canvas configuration from the session `/gentle:design config` state, the `GENTLE_DESIGN_HOST`, `GENTLE_DESIGN_PUBLIC_HOST`, and `GENTLE_DESIGN_API_KEY` environment variables, and defaults, with the session state taking precedence; the session state is not written to a persistent file;
+  - when the resolved bind host is set, binds that host, but requires an API key before opening the port when that host is outside loopback or is a wildcard address;
   - uses `GENTLE_DESIGN_PUBLIC_HOST` (defaulting to the bind host) for returned URLs, allowed `Host` headers, allowed `Origin` values, and CSP; by default this is `localhost` or `127.0.0.1`, never a wildcard;
   - requires a per-server random token on every route;
   - rejects a `Host` header that is not its configured public host, `localhost`, or `127.0.0.1`; and rejects POSTs whose `Origin` is not one of its allowed origins;
