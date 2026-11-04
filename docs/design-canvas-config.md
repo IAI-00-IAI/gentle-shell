@@ -1,6 +1,6 @@
 # Configuración del canvas de diseño remoto
 
-Este documento explica en español las funcionalidades añadidas a `gentle-design` para acceder al canvas de diseño desde otra máquina, manteniendo el comportamiento local por defecto y añadiendo autenticación opcional para usos remotos.
+Funcionalidades añadidas a `gentle-design` para acceder al canvas de diseño desde otra máquina, manteniendo el comportamiento local por defecto y añadiendo autenticación opcional para usos remotos.
 
 ## Objetivo
 

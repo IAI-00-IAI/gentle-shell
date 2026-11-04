@@ -1518,6 +1518,64 @@ test("config is session-only and does not leak into a new extension instance", a
 	});
 });
 
+test("the printed design login URL includes the per-server token when the canvas requires an API key", async () => {
+	await withNoCanvasEnv(async () => {
+		const cwd = scratchCwd();
+		writeDesign(cwd, "login", "Login screen");
+		const { pi, command } = fakePi();
+		const { ctx, notices } = fakeContext(cwd);
+
+		const opens: string[] = [];
+		const starts: DesignCanvasServerOptions[] = [];
+		const shows: Array<string | null> = [];
+		const pages = { connected: 0 };
+
+		const server: DesignCanvasServer = {
+			baseUrl: "http://192.0.2.10:4100/",
+			url: "http://192.0.2.10:4100/tok/",
+			port: 4100,
+			token: "tok",
+			apiKeyEnabled: true,
+			close: async () => {},
+			connectedClients: () => pages.connected,
+			show: (slug) => {
+				shows.push(slug);
+				return pages.connected;
+			}
+		};
+
+		const canvas = {
+			starts,
+			opens,
+			shows,
+			pages,
+			closes: () => starts.length,
+			startServer: async (): Promise<DesignCanvasServer> => {
+				starts.push({ designRoot: join(cwd, "design"), onComment: async () => {} });
+				return server;
+			},
+			openBrowser: async (url: string): Promise<{ opened: boolean }> => {
+				opens.push(url);
+				return { opened: true };
+			}
+		};
+
+		gentleDesign(pi, { ...canvas, ui: { hasUI: true, input: ctx.ui.input } });
+
+		await command().handler("config host 192.0.2.10", ctx);
+		await command().handler("config key secret1234", ctx);
+		await command().handler("open login", ctx);
+
+		const last = notices.at(-1);
+		assert.ok(last, "a notice was emitted");
+		assert.ok(
+			last.message.includes("Design login: http://192.0.2.10:4100/tok/login?key=secret1234"),
+			last.message
+		);
+		assert.equal(canvas.opens.length, 1);
+	});
+});
+
 test("config does not write a persistent canvas configuration file", async () => {
 	await withNoCanvasEnv(async () => {
 		const cwd = scratchCwd();

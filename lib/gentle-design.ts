@@ -402,7 +402,11 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 		let loginUrl: string | undefined;
 		if (server.apiKeyEnabled) {
 			const apiKey = resolvedConfig().apiKey;
-			if (apiKey) loginUrl = `${server.baseUrl}login?key=${encodeURIComponent(apiKey)}`;
+			if (apiKey) {
+				const loginUrlBase = new URL(`${server.baseUrl}${server.token}/login`);
+				loginUrlBase.searchParams.set("key", apiKey);
+				loginUrl = loginUrlBase.href;
+			}
 		}
 		const loginLine = loginUrl ? `\nDesign login: ${loginUrl}` : "";
 		if (reused && server.connectedClients() > 0 && server.show(slug) > 0) {
