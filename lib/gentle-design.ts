@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { designCommentBatchContent, designCommentContent, hasSystemTokens, isValidBindHost, isValidPublicHost, isLoopbackBindHost, isWildcardBindHost, listDesignEntries, readDesignManifest, resolveSystemBoard, startDesignCanvasServer, type DesignArtboard, type DesignCanvasServer, type DesignCanvasServerOptions, type DesignSessionContent } from "./design-canvas-server.ts";
+import { designCommentBatchContent, designCommentContent, hasSystemTokens, isValidBindHost, isValidPublicHost, isLoopbackBindHost, isWildcardBindHost, listDesignEntries, readDesignManifest, resolveSystemBoard, startDesignCanvasServer, type DesignArtboard, type DesignCanvasServer, type DesignCanvasServerOptions, type DesignManifest, type DesignSessionContent } from "./design-canvas-server.ts";
 import { createDesignCommentStore, DesignCommentsError, type StoredDesignComment } from "./design-comments.ts";
 import { createDesignHandoffStore, DesignHandoffsError, sendDesignHandoff, type DesignHandoff, type DesignHandoffDelivery, type DesignHandoffStatus } from "./design-handoffs.ts";
 import { openInBrowser, type OpenInBrowserResult } from "./design-open-browser.ts";
@@ -11,7 +11,7 @@ import { detectDesignSources, staleDesignSources } from "./design-sources.ts";
 
 export const DESIGN_SKILL_NAME = "gentle-design";
 
-export const DESIGN_SUBCOMMANDS = ["open", "stop", "sync", "config", "implement"] as const;
+export const DESIGN_SUBCOMMANDS = ["help", "open", "stop", "sync", "config", "implement"] as const;
 export type DesignSubcommand = (typeof DESIGN_SUBCOMMANDS)[number];
 
 export type DesignArgs =
@@ -45,14 +45,26 @@ export function hasSystemBoard(cwd: string): boolean {
 }
 
 export const DESIGN_HELP =
-	"Design HTML artboards with any model: /gentle:design <brief> starts a design run; no arguments open the latest design (or the system board alone) on the local canvas. Subcommands: open [slug], stop, sync (write design/system.md and design/system.html from the project's design sources; the canvas shows that system board first), config (show, reset, host <host>, public-host <host>, key, key <apiKey>), implement <slug>/<artboard> (hand an artboard off to the project's real stack, also from the canvas Implement button). config controls the session canvas configuration; key is kept only for the current session.";
+	"Design HTML artboards with any model: /gentle:design <brief> starts a design run; no arguments or help show the available commands. Subcommands: open [slug], stop, sync (write design/system.md and design/system.html from the project's design sources; the canvas shows that system board first), config (show, reset, host <host>, public-host <host>, key, key <apiKey>), implement <slug>/<artboard> (hand an artboard off to the project's real stack, also from the canvas Implement button), help. config controls the session canvas configuration; key is kept only for the current session.";
 
 /** What /gentle:design sync asks the skill to do; it rides designRunMessage like a brief. */
 export const DESIGN_SYNC_REQUEST =
 	'sync the project design system: follow "Design system sync" to read the project\'s design sources and write design/system.md and design/system.html.';
 
-export function designUsage(designs: readonly DesignSummary[]): string {
-	const lines = ["Usage: /gentle:design <brief>", "Describe the goal, layout, content, and audience. Directions are written to design/<slug>/."];
+export function designUsage(designs: readonly DesignSummary[] = []): string {
+	const lines = [
+		"Usage: /gentle:design <brief>",
+		"Describe the goal, layout, content, and audience. Directions are written to design/<slug>.",
+		"",
+		"Commands:",
+		"<brief>                     start a design run",
+		"open [slug]                open a design on the canvas",
+		"stop                       stop the design canvas",
+		"sync                       sync design/system.md and design/system.html",
+		"config [show | reset | host <host> | public-host <host> | key]",
+		"implement <slug>/<artboard> hand an artboard off to the project's real stack",
+		"help                       show this help"
+	];
 	if (designs.length > 0) {
 		lines.push("", "Designs in this project:");
 		for (const design of designs) lines.push(`  ${design.title} (${design.slug})`);
@@ -156,11 +168,12 @@ function resolveDesignTarget(cwd: string, target: string, what: string): Resolve
 	const file = slash === -1 ? "" : text.slice(slash + 1);
 	if (!slug || !file) return unknownTarget(cwd, `Name the artboard to ${what} as <slug>/<artboard>.`);
 	if (!listDesigns(cwd).some((design) => design.slug === slug)) return unknownTarget(cwd, `No design "${slug}" in design/.`);
-	let manifest;
+	let manifest: DesignManifest;
 	try {
 		manifest = readDesignManifest(join(cwd, "design"), slug);
 	} catch (error) {
-		return { kind: "refuse", notice: { message: error instanceof Error ? error.message : String(error), level: "warning" } };
+		const message = error instanceof Error ? error.message : String(error);
+		return { kind: "refuse", notice: { message, level: "warning" } };
 	}
 	const artboard = manifest.artboards.find((candidate) => candidate.file === file);
 	if (!artboard) return unknownTarget(cwd, `No artboard "${file}" in design/${slug}/design.json.`);
@@ -178,9 +191,13 @@ export async function planDesignImplement(cwd: string, target: string): Promise<
 	try {
 		comments = await createDesignCommentStore(designRoot).listOpen(slug, artboard.file);
 	} catch (error) {
-		const reason = error instanceof DesignCommentsError && error.code === "invalid-file"
-			? `design/${slug}/comments.json cannot be read: ${error.message}. Fix the file by hand; it is never overwritten.`
-			: error instanceof Error ? error.message : String(error);
+		let reason: string;
+		if (error instanceof DesignCommentsError && error.code === "invalid-file") {
+			reason = `design/${slug}/comments.json cannot be read: ${error.message}. Fix the file by hand; it is never overwritten.`;
+		} else {
+			const message = error instanceof Error ? error.message : String(error);
+			reason = message;
+		}
 		return { kind: "refuse", notice: { message: reason, level: "warning" } };
 	}
 	return { kind: "send", message: designImplementMessage({ slug, artboard, feature, systemTokens: hasSystemTokens(designRoot), comments }), warnings, handoff: { slug, file: artboard.file, feature } };
@@ -307,8 +324,13 @@ async function askDesignCanvasApiKey(ui: DesignCanvasUIInput | undefined, title:
 }
 
 /** The canvas of `slug`, or the root canvas (system board only) when slug is null. */
-function canvasUrl(server: DesignCanvasServer, slug: string | null): string {
-	return new URL(slug === null ? `/${server.token}/` : `/${server.token}/d/${slug}/`, server.url).href;
+function canvasUrl(server: DesignCanvasServer, slug: string | null): string | undefined {
+	const path = slug === null ? `/${server.token}/` : `/${server.token}/d/${slug}/`;
+	try {
+		return new URL(path, server.url).href;
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -398,14 +420,21 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 			return { message: `The design canvas could not start: ${error instanceof Error ? error.message : String(error)}`, level: "error" };
 		}
 		const url = canvasUrl(server, slug);
+		if (url === undefined) {
+			return { message: "The design canvas returned an invalid URL; the browser was not opened.", level: "error" };
+		}
 		if (running) running.url = url;
 		let loginUrl: string | undefined;
 		if (server.apiKeyEnabled) {
 			const apiKey = resolvedConfig().apiKey;
 			if (apiKey) {
-				const loginUrlBase = new URL(`${server.baseUrl}${server.token}/login`);
-				loginUrlBase.searchParams.set("key", apiKey);
-				loginUrl = loginUrlBase.href;
+				try {
+					const loginUrlBase = new URL(`${server.baseUrl}${server.token}/login`);
+					loginUrlBase.searchParams.set("key", apiKey);
+					loginUrl = loginUrlBase.href;
+				} catch {
+				loginUrl = undefined;
+			}
 			}
 		}
 		const loginLine = loginUrl ? `\nDesign login: ${loginUrl}` : "";

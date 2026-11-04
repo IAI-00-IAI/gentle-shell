@@ -31,6 +31,7 @@ S7. `config` must validate the bind host and public host using the same rules as
 S8. Existing behavior remains unchanged when no canvas configuration is set: the canvas still binds `127.0.0.1` by default.
 
 S9. The full `design-canvas-server.test.ts` and `gentle-design.test.ts` suites must pass.
+S10. When `/gentle:design` is typed without arguments, or with `help`, the available design subcommands are printed before any canvas action is taken.
 
 ## Tasks
 
@@ -41,6 +42,7 @@ S9. The full `design-canvas-server.test.ts` and `gentle-design.test.ts` suites m
 | T3 | S1, S4, S5 | delegated: context backstop | done | `extensions/gentle-design.ts` parses `config`, `show`, `reset`, `host`, `public-host`, and `key`; `open` uses `askApiKey` and stores the result; remote open prompt tests pass |
 | T4 | S2, S3, S4, S5, S7, S8, S9 | delegated: context backstop | done | added tests for default config, session-only config, invalid host/public-host, masked key, reset, remote open prompting, repeated open reuse, restart on config change, and no persistent config file; `tests/design-canvas-server.test.ts` and `tests/gentle-design.test.ts` pass |
 | T5 | S9 | delegated: context backstop | done | docs and ODD document updated; commit `d34bba260`; `design-canvas-server.test.ts` and `gentle-design.test.ts` pass |
+| T6 | S10 | inline: help path | done | `lib/gentle-design.ts` exposes `help`; no arguments or `help` print the available design subcommands; `extensions/gentle-design.ts` handles both; tests updated; `design-canvas-server.test.ts`, `gentle-design.test.ts`, and typecheck pass |
 
 ## Delivery
 
@@ -55,3 +57,5 @@ L2. User selected a dedicated `/gentle:design config` command.
 L3. User corrected the API key behavior: ask when opening the canvas, do not persist it, but keep it for the current session rather than asking for every correction or canvas update.
 
 L4. Implemented T1-T5 and committed `d34bba260`. The focused suites passed: `node --test --test-timeout=30000 --test-reporter=tap tests/design-canvas-server.test.ts tests/gentle-design.test.ts`.
+
+L5. User reported that the printed remote login URL omitted the per-server token, so `http://<publicHost>:<port>/login?key=...` returned 404. Fixed `lib/gentle-design.ts` to build the login URL as `/<token>/login?key=<apiKey>` and added a regression test in `tests/gentle-design.test.ts`; committed `1e724448c`.

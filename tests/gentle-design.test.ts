@@ -134,7 +134,8 @@ test("registers /gentle:design with help text naming the brief form and every su
 	gentleDesign(pi);
 	assert.equal(DESIGN_COMMAND_NAME, "gentle:design");
 	const description = command().description;
-	for (const word of ["<brief>", "open", "stop", "sync", "implement"]) assert.ok(description.includes(word), `help names ${word}`);
+	for (const word of ["<brief>", "help", "open", "stop", "sync", "config", "implement"]) assert.ok(description.includes(word), `help names ${word}`);
+	assert.ok(description.includes("no arguments"), "help names the no-argument behavior");
 });
 
 test("a brief sends exactly one message that runs the gentle-design skill with that brief", async () => {
@@ -226,8 +227,8 @@ test("open refreshes the connected canvas page instead of opening the browser ag
 	assert.equal(canvas.opens.length, 1, "no new tab while a page is connected");
 	assert.deepEqual(canvas.shows, ["login"]);
 	assert.deepEqual(notices.at(-1), { message: "Design canvas refreshed: http://127.0.0.1:4100/tok/d/login/", level: "info" });
-	await command().handler("", ctx);
-	assert.deepEqual(canvas.shows, ["login", "pricing-page"], "no-args open switches the same page to the latest design");
+	await command().handler("open", ctx);
+	assert.deepEqual(canvas.shows, ["login", "pricing-page"], "open switches the same page to the latest design");
 	assert.equal(notices.at(-1)!.message, "Design canvas refreshed: http://127.0.0.1:4100/tok/d/pricing-page/");
 	canvas.pages.connected = 0;
 	await command().handler("open login", ctx);
@@ -331,22 +332,39 @@ test("open <slug> without designs keeps the same no-designs warning as open", as
 	assert.deepEqual(named.notices, bare.notices);
 });
 
-test("no arguments with designs opens the most recent design by design.json mtime", async () => {
+test("no arguments with designs shows help and does not open the canvas", async () => {
 	const cwd = scratchCwd();
 	writeDesign(cwd, "alpha", "Alpha", 1000);
 	writeDesign(cwd, "zeta", "Zeta", 3000);
 	writeDesign(cwd, "beta", "Beta", 2000);
-	for (const args of ["", "open"]) {
-		const { pi, sent, command } = fakePi();
-		const canvas = fakeCanvas();
-		gentleDesign(pi, canvas);
-		const { ctx, notices } = fakeContext(cwd);
-		await command().handler(args, ctx);
-		assert.deepEqual(canvas.opens, ["http://127.0.0.1:4100/tok/d/zeta/"], JSON.stringify(args));
-		assert.equal(notices.length, 1);
-		assert.equal(notices[0].message, "Design canvas: http://127.0.0.1:4100/tok/d/zeta/");
-		assert.equal(sent.length, 0);
-	}
+	const { pi, sent, command } = fakePi();
+	const canvas = fakeCanvas();
+	gentleDesign(pi, canvas);
+	const { ctx, notices } = fakeContext(cwd);
+	await command().handler("", ctx);
+	assert.equal(canvas.starts.length, 0);
+	assert.deepEqual(canvas.opens, []);
+	assert.equal(notices.length, 1);
+	assert.match(notices[0].message, /\/gentle:design <brief>/);
+	assert.ok(notices[0].message.includes("help"), "no-argument help names the help command");
+	assert.ok(notices[0].message.includes("zeta"), "no-argument help lists available designs");
+	assert.equal(sent.length, 0);
+});
+
+test("open with designs opens the most recent design by design.json mtime", async () => {
+	const cwd = scratchCwd();
+	writeDesign(cwd, "alpha", "Alpha", 1000);
+	writeDesign(cwd, "zeta", "Zeta", 3000);
+	writeDesign(cwd, "beta", "Beta", 2000);
+	const { pi, sent, command } = fakePi();
+	const canvas = fakeCanvas();
+	gentleDesign(pi, canvas);
+	const { ctx, notices } = fakeContext(cwd);
+	await command().handler("open", ctx);
+	assert.deepEqual(canvas.opens, ["http://127.0.0.1:4100/tok/d/zeta/"]);
+	assert.equal(notices.length, 1);
+	assert.equal(notices[0].message, "Design canvas: http://127.0.0.1:4100/tok/d/zeta/");
+	assert.equal(sent.length, 0);
 });
 
 test("stop closes the running canvas, and reports when none is running", async () => {
@@ -606,28 +624,39 @@ test("integration: the canvas Implement route sends the same text as the command
 	assert.ok(String(sent[0].content).includes("open01"));
 });
 
-test("with only design/system.html, no arguments and open start the canvas on the system board", async () => {
+test("with only design/system.html, no arguments show help and open starts the system board", async () => {
 	const cwd = scratchCwd();
 	mkdirSync(join(cwd, "design"), { recursive: true });
 	writeFileSync(join(cwd, "design", "system.html"), "<h1>Tokens</h1>");
-	for (const args of ["", "open"]) {
-		const { pi, sent, command } = fakePi();
-		const canvas = fakeCanvas();
-		gentleDesign(pi, canvas);
-		const { ctx, notices } = fakeContext(cwd);
-		await command().handler(args, ctx);
-		assert.equal(canvas.starts.length, 1, JSON.stringify(args));
-		assert.deepEqual(canvas.opens, ["http://127.0.0.1:4100/tok/"], JSON.stringify(args));
-		assert.deepEqual(notices, [{ message: "Design canvas: http://127.0.0.1:4100/tok/", level: "info" }]);
-		assert.equal(sent.length, 0);
-	}
-	const { pi, command } = fakePi();
-	const canvas = fakeCanvas();
-	gentleDesign(pi, canvas);
-	const { ctx, notices } = fakeContext(cwd);
-	await command().handler("open login", ctx);
-	assert.equal(canvas.starts.length, 0, "a named design still has to exist");
-	assert.equal(notices[0].level, "warning");
+
+	const { pi, sent, command } = fakePi();
+	const noArgsCanvas = fakeCanvas();
+	gentleDesign(pi, noArgsCanvas);
+	const { ctx: noArgsCtx, notices: noArgsNotices } = fakeContext(cwd);
+	await command().handler("", noArgsCtx);
+	assert.equal(noArgsCanvas.starts.length, 0);
+	assert.deepEqual(noArgsCanvas.opens, []);
+	assert.match(noArgsNotices[0].message, /\/gentle:design <brief>/);
+	assert.ok(noArgsNotices[0].message.includes("help"), "no-argument help names the help command");
+	assert.equal(sent.length, 0);
+
+	const { pi: openPi, sent: openSent, command: openCommand } = fakePi();
+	const openCanvas = fakeCanvas();
+	gentleDesign(openPi, openCanvas);
+	const { ctx: openCtx, notices: openNotices } = fakeContext(cwd);
+	await openCommand().handler("open", openCtx);
+	assert.equal(openCanvas.starts.length, 1);
+	assert.deepEqual(openCanvas.opens, ["http://127.0.0.1:4100/tok/"]);
+	assert.deepEqual(openNotices, [{ message: "Design canvas: http://127.0.0.1:4100/tok/", level: "info" }]);
+	assert.equal(openSent.length, 0);
+
+	const { pi: namedPi, command: namedCommand } = fakePi();
+	const namedCanvas = fakeCanvas();
+	gentleDesign(namedPi, namedCanvas);
+	const { ctx: namedCtx, notices: namedNotices } = fakeContext(cwd);
+	await namedCommand().handler("open login", namedCtx);
+	assert.equal(namedCanvas.starts.length, 0, "a named design still has to exist");
+	assert.equal(namedNotices[0].level, "warning");
 });
 
 test("the skill documents the feature field and the ODD link rule", () => {

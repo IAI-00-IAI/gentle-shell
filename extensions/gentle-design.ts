@@ -3,7 +3,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { Type } from "typebox";
 import { appendSystemPromptOnce } from "../lib/append-system-prompt.ts";
 import type { DesignSessionContent } from "../lib/design-canvas-server.ts";
-import { DESIGN_COMMENTS_TOOL_NAME, DESIGN_HELP, DESIGN_PROMPT_HINT, DESIGN_SKILL_NAME, DESIGN_SYNC_REQUEST, DESIGN_TOOL_NAME, createDesignCanvas, designRunMessage, designUsage, hasSystemBoard, listDesigns, parseDesignArgs, planDesignImplement, runDesignCommentsTool, runDesignTool, sendDesignImplement, type DesignCanvasDeps, type DesignCommentsToolParams, type DesignToolParams } from "../lib/gentle-design.ts";
+import { DESIGN_COMMENTS_TOOL_NAME, DESIGN_HELP, DESIGN_PROMPT_HINT, DESIGN_SKILL_NAME, DESIGN_SYNC_REQUEST, DESIGN_TOOL_NAME, createDesignCanvas, designRunMessage, designUsage, listDesigns, parseDesignArgs, planDesignImplement, runDesignCommentsTool, runDesignTool, sendDesignImplement, type DesignCanvasDeps, type DesignCommentsToolParams, type DesignToolParams } from "../lib/gentle-design.ts";
 
 // Gentle Design: /gentle:design <brief> runs the bundled gentle-design skill,
 // which writes self-contained HTML artboards under design/<slug>/ with
@@ -100,9 +100,8 @@ export default function gentleDesign(pi: ExtensionAPI, deps: GentleDesignDeps = 
 	const handle = async (args: string, ctx: ExtensionContext) => {
 		latest = ctx;
 		const parsed = parseDesignArgs(args);
-		if (parsed.kind === "usage") {
-			if (listDesigns(ctx.cwd).length > 0 || hasSystemBoard(ctx.cwd)) await open(ctx);
-			else ctx.ui.notify(designUsage([]), "info");
+		if (parsed.kind === "usage" || parsed.kind === "subcommand" && parsed.name === "help") {
+			ctx.ui.notify(designUsage(listDesigns(ctx.cwd)), "info");
 			return;
 		}
 		if (parsed.kind === "subcommand") {
