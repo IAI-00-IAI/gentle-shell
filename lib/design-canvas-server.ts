@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { watch, type FSWatcher } from "node:fs";
-import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { isIP } from "node:net";
+import { watch, readFileSync, readdirSync, realpathSync, statSync, type FSWatcher, type ReaddirFsEntry, type Stats } from "node:fs";
 import { open, readFile, realpath, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, isAbsolute, join, sep } from "node:path";
@@ -12,7 +12,6 @@ import { DESIGN_FEATURE_PATH, DesignHandoffsError, createDesignHandoffStore, sen
 // per-server random token, the Host header must name this server, POSTs need
 // this server's own Origin, and files resolve by realpath inside designRoot.
 
-const HOST = "127.0.0.1";
 /** Design directory names the canvas serves: kebab-case, never a dot or path segment. */
 export const DESIGN_SLUG = /^[a-z0-9][a-z0-9-]*$/;
 const SLUG = DESIGN_SLUG;
@@ -105,13 +104,23 @@ export type DesignCanvasServerOptions = {
 	 */
 	onImplement?: (request: DesignImplementRequest) => DesignHandoffDelivery | Promise<DesignHandoffDelivery>;
 	initialSlug?: string;
+	/** TCP bind address. Defaults to loopback. */
+	host?: string;
+	/** Host used in returned URLs and trusted origins. Defaults to host. */
+	publicHost?: string;
+	/** Optional shared secret for non-loopback access. */
+	apiKey?: string;
 	randomToken?: () => string;
-};
+}
 
 export type DesignCanvasServer = {
+	/** Base origin of the canvas, such as `http://127.0.0.1:4321/`. */
+	baseUrl: string;
 	url: string;
 	port: number;
 	token: string;
+	/** Whether a non-empty `apiKey` is required for authenticated routes. */
+	apiKeyEnabled: boolean;
 	close(): Promise<void>;
 	/** Canvas pages with an open live-reload stream. */
 	connectedClients(): number;
@@ -177,12 +186,13 @@ function attachedScreenshots(batch: readonly DesignComment[]): Set<DesignComment
 
 function withImages(text: string, comments: Iterable<DesignComment>): DesignSessionContent {
 	const images = [...comments].map((comment) => ({ type: "image" as const, data: comment.screenshot!.data!, mimeType: comment.screenshot!.mimeType }));
-	return images.length === 0 ? text : [{ type: "text", text }, ...images];
+	return images.length > 0 ? [{ type: "text" as const, text }, ...images] : text;
 }
 
 /** Session content for one canvas comment: its message, with the screenshot attached when readable. */
 export function designCommentContent(comment: DesignComment): DesignSessionContent {
-	return withImages(formatDesignComment(comment), comment.screenshot?.data !== undefined ? [comment] : []);
+	const screenshotData = comment.screenshot?.data;
+	return withImages(formatDesignComment(comment), typeof screenshotData === "string" ? [comment] : []);
 }
 
 /** Session content for a batch: one message, with up to MAX_DESIGN_BATCH_IMAGES screenshots attached. */
@@ -241,6 +251,97 @@ function sameToken(expected: string, candidate: string): boolean {
 	return a.length === b.length && timingSafeEqual(a, b);
 }
 
+const API_KEY_COOKIE_NAME = "gd_api_key";
+
+function normalizeBindHost(host: string): string {
+	return host.replace(/^\[|\]$/g, "");
+}
+
+function isLoopbackBindHost(host: string): boolean {
+	return ["127.0.0.1", "localhost", "::1"].includes(normalizeBindHost(host));
+}
+
+function isWildcardBindHost(host: string): boolean {
+	return normalizeBindHost(host) === "0.0.0.0" || normalizeBindHost(host) === "::";
+}
+
+function isValidBindHost(host: string): boolean {
+	if (host === "localhost") return true;
+	const normalized = normalizeBindHost(host);
+	const family = isIP(normalized);
+	return family === 4 || family === 6;
+}
+
+function isValidPublicHost(host: string): boolean {
+	try {
+		const url = new URL(`http://${host}`);
+		return url.hostname !== "" && host.length > 0 && host.length <= 255;
+	} catch {
+		return false;
+	}
+}
+
+function httpOrigin(publicHost: string, port: number): string {
+	const host = isIP(publicHost) === 6 ? `[${publicHost}]` : publicHost;
+	return `http://${host}:${port}`;
+}
+
+function allowedHostHeaders(publicHost: string, port: number): Set<string> {
+	const publicName = isIP(publicHost) === 6 ? `[${publicHost}]` : publicHost;
+	return new Set([
+		`${publicName}:${port}`,
+		`localhost:${port}`,
+		`127.0.0.1:${port}`,
+	]);
+}
+
+function allowedOrigins(publicHost: string, port: number): Set<string> {
+	return new Set([
+		httpOrigin(publicHost, port),
+		`http://localhost:${port}`,
+		`http://127.0.0.1:${port}`,
+	]);
+}
+
+function sameApiKey(provided: string | null, expected: string | null): boolean {
+	if (!provided || !expected) return false;
+	return sameToken(expected, provided);
+}
+
+function cookieValue(req: IncomingMessage, name: string): string | null {
+	const header = req.headers.cookie;
+	if (typeof header !== "string" || !header) return null;
+	for (const part of header.split(";")) {
+		const eq = part.indexOf("=");
+		if (eq === -1) continue;
+		const cookieName = part.slice(0, eq).trim();
+		if (cookieName !== name) continue;
+		return part.slice(eq + 1).trim();
+	}
+	return null;
+}
+
+function bearerApiKey(req: IncomingMessage): string | null {
+	const auth = req.headers.authorization;
+	if (typeof auth !== "string" || !auth.startsWith("Bearer ")) return null;
+	return auth.slice(7).trim();
+}
+
+function apiKeyAuthed(req: IncomingMessage, apiKey: string): boolean {
+	return sameApiKey(cookieValue(req, API_KEY_COOKIE_NAME), apiKey) || sameApiKey(bearerApiKey(req), apiKey);
+}
+
+function isStaticPath(rest: string[]): boolean {
+	if (rest[0] === "files" && rest.length >= 2) return true;
+	if (rest[0] === "assets" && rest.length >= 2) return true;
+	if (rest.length === 1 && rest[0] === SYSTEM_FILE) return true;
+	return false;
+}
+
+function requiresApiKey(rest: string[]): boolean {
+	return !isStaticPath(rest) && rest[0] !== "login";
+}
+
 /** One decoded path segment, or null when it could name anything but a plain entry. */
 function safeSegment(raw: string): string | null {
 	let decoded: string;
@@ -249,7 +350,7 @@ function safeSegment(raw: string): string | null {
 	} catch {
 		throw new HttpError(400, "malformed-url");
 	}
-	if (decoded === "" || decoded.startsWith(".") || /[\/\\\0:]/.test(decoded) || /[\u0000-\u001f\u007f]/.test(decoded)) return null;
+	if (decoded === "" || decoded.startsWith(".") || decoded.includes("/") || decoded.includes("\\") || decoded.includes(":") || hasControlChars(decoded)) return null;
 	return decoded;
 }
 
@@ -258,9 +359,17 @@ function relativeSegments(value: unknown): string[] | null {
 	if (typeof value !== "string" || value.length === 0 || value.length > 512) return null;
 	const parts = value.split("/");
 	for (const part of parts) {
-		if (part === "" || part.startsWith(".") || /[\\\0:]/.test(part) || /[\u0000-\u001f\u007f]/.test(part)) return null;
+		if (part === "" || part.startsWith(".") || part.includes("/") || part.includes("\\") || part.includes(":") || hasControlChars(part)) return null;
 	}
 	return parts;
+}
+
+function hasControlChars(value: string): boolean {
+	for (let index = 0; index < value.length; index += 1) {
+		const code = value.charCodeAt(index);
+		if (code < 0x20 || code === 0x7f) return true;
+	}
+	return false;
 }
 
 function within(root: string, target: string): boolean {
@@ -361,8 +470,8 @@ export type DesignListing = { slug: string; title: string; mtime: number; valid:
  * with valid: false and its slug as the title.
  */
 export function listDesignEntries(designRoot: string): DesignListing[] {
-	let root: string;
-	let entries;
+	let root: string | undefined;
+	let entries: ReaddirFsEntry[];
 	try {
 		root = realpathSync(designRoot);
 		entries = readdirSync(root, { withFileTypes: true });
@@ -373,11 +482,11 @@ export function listDesignEntries(designRoot: string): DesignListing[] {
 	const designs: DesignListing[] = [];
 	for (const entry of entries) {
 		if (!SLUG.test(entry.name) || !(entry.isDirectory() || entry.isSymbolicLink())) continue;
-		let path: string;
-		let info;
+		let path: string | undefined;
+		let info: Stats | undefined;
 		try {
-			const design = realpathSync(join(root, entry.name));
-			if (!within(root, design) || design === root) continue;
+			const design = realpathSync(join(root!, entry.name));
+			if (!within(root!, design) || design === root!) continue;
 			path = realpathSync(join(design, "design.json"));
 			if (!within(design, path)) continue;
 			info = statSync(path);
@@ -385,12 +494,12 @@ export function listDesignEntries(designRoot: string): DesignListing[] {
 			if (isMissing(error)) continue;
 			throw error;
 		}
-		if (!info.isFile()) continue;
+		if (info === undefined) continue;
 		let title = entry.name;
 		let valid = false;
 		try {
-			if (info.size <= LIMITS.manifestBytes) {
-				title = normalizeManifest(entry.name, readFileSync(path, "utf8")).title;
+			if (path && info.size <= LIMITS.manifestBytes) {
+				title = normalizeManifest(entry.name, readFileSync(path!, "utf8")).title;
 				valid = true;
 			}
 		} catch {
@@ -457,9 +566,21 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 	if (typeof options.designRoot !== "string" || !isAbsolute(options.designRoot)) throw new Error("designRoot must be an absolute path");
 	if (typeof options.onComment !== "function") throw new Error("onComment must be a function");
 	if (options.initialSlug !== undefined && !SLUG.test(options.initialSlug)) throw new Error("initialSlug must be kebab-case");
+
+	const bindHost = options.host ?? "127.0.0.1";
+	const publicHost = options.publicHost ?? (isWildcardBindHost(bindHost) ? "127.0.0.1" : bindHost);
+	const apiKey = options.apiKey ?? null;
+
+	if (!isValidBindHost(bindHost)) throw new Error(`GENTLE_DESIGN_HOST must be a loopback or wildcard IP address, got ${bindHost}`);
+	if (!isValidPublicHost(publicHost)) throw new Error(`GENTLE_DESIGN_PUBLIC_HOST must be a valid host, got ${publicHost}`);
+	if ((!isLoopbackBindHost(bindHost) || isWildcardBindHost(bindHost)) && apiKey === null) {
+		throw new Error("GENTLE_DESIGN_API_KEY must be set when the canvas is bound outside loopback");
+	}
+
 	const token = (options.randomToken ?? (() => randomBytes(24).toString("base64url")))();
 	if (!TOKEN_SHAPE.test(token)) throw new Error("token must be 16-128 base64url characters");
 	const designRoot = options.designRoot;
+	let allowedHosts: Set<string> = new Set();
 	const store = createDesignCommentStore(designRoot);
 	const handoffs = createDesignHandoffStore(designRoot);
 	// Deliveries of one design run one at a time (send-now and send-all), so a
@@ -567,15 +688,16 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 	}
 
 	/** Artboard responses are CSP-sandboxed so even a top-level visit gets an opaque origin. */
-	function artboardCsp(host: string): string {
-		const self = `'self' http://${host}`;
+	function artboardCsp(): string {
+		const self = `'self' ${origin}`;
+		const ancestors = Array.from(allowedOrigins(publicHost, port)).join(" ");
 		return [
 			"sandbox allow-scripts",
 			`default-src ${self} 'unsafe-inline' data: blob:`,
 			"connect-src 'none'",
 			"base-uri 'none'",
 			"form-action 'none'",
-			`frame-ancestors http://${HOST}:${port} http://localhost:${port}`,
+			`frame-ancestors ${ancestors}`,
 		].join("; ");
 	}
 
@@ -594,7 +716,7 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 	}
 
 	/** Serves a real path already contained by the caller, as an artboard resource. */
-	async function serveResolved(req: IncomingMessage, res: ServerResponse, target: string, type: string): Promise<void> {
+	async function serveResolved(_req: IncomingMessage, res: ServerResponse, target: string, type: string): Promise<void> {
 		// Read the already-resolved real path so a swapped link cannot redirect the read.
 		const handle = await open(target, "r").catch((error: unknown) => { if (isMissing(error)) throw new HttpError(404, "not-found"); throw error; });
 		let content: Buffer;
@@ -609,7 +731,7 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 		const body = type.startsWith("text/html")
 			? injectInspector(content.toString("utf8"), `<script src="${escapeHtml(base)}assets/inspector.js"></script>`)
 			: content;
-		raw(res, body, { "Content-Type": type, "Content-Security-Policy": artboardCsp(String(req.headers.host)) });
+		raw(res, body, { "Content-Type": type, "Content-Security-Policy": artboardCsp() });
 	}
 
 	async function readJsonObject(req: IncomingMessage, allowEmpty = false, limit: number = LIMITS.bodyBytes): Promise<Record<string, unknown>> {
@@ -759,7 +881,10 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 	function queueChange(filename: string): void {
 		if (closing) return;
 		const parts = filename.split(/[\\/]/);
-		if (parts.length === 1 && SYSTEM_FILES.has(parts[0])) return debounceChange(parts[0], null, parts[0]);
+		if (parts.length === 1 && SYSTEM_FILES.has(parts[0])) {
+		debounceChange(parts[0], null, parts[0]);
+		return;
+	}
 		const [slug, ...rest] = parts;
 		if (!SLUG.test(slug) || rest.length === 0 || rest.some((part) => part === "" || part.startsWith("."))) return;
 		if (!FILE_TYPES[extname(rest[rest.length - 1]).toLowerCase()]) return;
@@ -810,7 +935,7 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 
 	async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
 		const host = req.headers.host;
-		if (host !== `${HOST}:${port}` && host !== `localhost:${port}`) return reply(res, 421, { error: "misdirected" });
+		if (typeof host !== "string" || !allowedHosts.has(host)) return reply(res, 421, { error: "misdirected" });
 		const raw = String(req.url ?? "");
 		if (!raw.startsWith("/")) return reply(res, 404, { error: "not-found" });
 		const mark = raw.indexOf("?");
@@ -824,6 +949,9 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 		// Unknown paths stay 404 whatever the method; only known routes answer 405.
 		if (!post && !get) return reply(res, 404, { error: "not-found" });
 		if (method !== (post ? "POST" : "GET")) return reply(res, 405, { error: "method-not-allowed" }, { Allow: post ? "POST" : "GET" });
+		if (apiKey !== null && requiresApiKey(rest)) {
+			if (!apiKeyAuthed(req, apiKey)) return reply(res, 401, { error: "unauthorized" }, { "WWW-Authenticate": "Bearer" });
+		}
 		if (post) {
 			// Every write needs this server's exact Origin and a JSON body, so no other page can forge one.
 			if (!ownOrigins.has(String(req.headers.origin))) return reply(res, 403, { error: "forbidden" });
@@ -863,6 +991,19 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 	function route(rest: string[]): Handler | undefined {
 		const [head, ...tail] = rest;
 		if (rest.length === 1 && head === "") return (_req, res) => canvasPage(res, null);
+		if (head === "login" && tail.length === 0 && apiKey !== null) {
+			return async (_req, res) => {
+				const url = new URL(_req.url ?? "/", origin);
+				const key = url.searchParams.get("key");
+				if (!sameApiKey(key, apiKey)) return reply(res, 401, { error: "unauthorized" }, { "WWW-Authenticate": "Bearer" });
+				res.writeHead(302, {
+					location: origin + base,
+					"Set-Cookie": `gd_api_key=${apiKey}; HttpOnly; SameSite=Strict; Path=/`,
+					...BASE_HEADERS,
+				});
+				res.end();
+			};
+		}
 		if (head === "d" && tail.length === 2 && tail[1] === "") {
 			const slug = safeSegment(tail[0]);
 			return slug && SLUG.test(slug) ? (_req, res) => canvasPage(res, slug) : undefined;
@@ -905,19 +1046,20 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 
 	await new Promise<void>((resolve, reject) => {
 		server.once("error", reject);
-		server.listen(0, HOST, () => {
+		server.listen(0, bindHost, () => {
 			server.off("error", reject);
 			resolve();
 		});
 	});
 	const address = server.address();
-	if (!address || typeof address === "string" || address.address !== HOST) {
+	if (!address || typeof address === "string" || normalizeBindHost(address.address) !== normalizeBindHost(bindHost)) {
 		server.close();
-		throw new Error("design canvas server is not bound to 127.0.0.1");
+		throw new Error(`design canvas server is not bound to ${bindHost}`);
 	}
 	port = address.port;
-	origin = `http://${HOST}:${port}`;
-	ownOrigins = new Set([origin, `http://localhost:${port}`]);
+	origin = httpOrigin(publicHost, port);
+	allowedHosts = allowedHostHeaders(publicHost, port);
+	ownOrigins = allowedOrigins(publicHost, port);
 	await ensureWatcher();
 
 	function close(): Promise<void> {
@@ -943,5 +1085,15 @@ export async function startDesignCanvasServer(options: DesignCanvasServerOptions
 	}
 
 	const url = `${origin}${base}${options.initialSlug ? `d/${options.initialSlug}/` : ""}`;
-	return { url, port, token, close, connectedClients: () => clients.size, show };
+	const rootUrl = `${origin}/`;
+	return {
+		baseUrl: rootUrl,
+		url,
+		port,
+		token,
+		apiKeyEnabled: apiKey !== null,
+		close,
+		connectedClients: () => clients.size,
+		show,
+	};
 }

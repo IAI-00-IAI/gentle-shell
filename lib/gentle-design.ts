@@ -259,6 +259,9 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 		if (running && running.root !== root) await stop();
 		if (!running) {
 			const server = startServer({
+				host: optionalEnv(process.env.GENTLE_DESIGN_HOST),
+				publicHost: optionalEnv(process.env.GENTLE_DESIGN_PUBLIC_HOST),
+				apiKey: optionalEnv(process.env.GENTLE_DESIGN_API_KEY),
 				designRoot: root,
 				onComment: async (comment) => { await deliver(designCommentContent(comment)); },
 				onComments: async (batch) => { await deliver(designCommentBatchContent(batch)); },
@@ -297,13 +300,19 @@ export function createDesignCanvas(deliver: (message: DesignSessionContent) => D
 		}
 		const url = canvasUrl(server, slug);
 		if (running) running.url = url;
+		let loginUrl: string | undefined;
+		if (server.apiKeyEnabled) {
+			const apiKey = process.env.GENTLE_DESIGN_API_KEY;
+			if (apiKey) loginUrl = `${server.baseUrl}login?key=${encodeURIComponent(apiKey)}`;
+		}
+		const loginLine = loginUrl ? `\nDesign login: ${loginUrl}` : "";
 		if (reused && server.connectedClients() > 0 && server.show(slug) > 0) {
-			return { message: `Design canvas refreshed: ${url}`, level: "info", url, opened: true, refreshed: true };
+			return { message: `Design canvas refreshed: ${url}${loginLine}`, level: "info", url, opened: true, refreshed: true };
 		}
 		const result = await openBrowser(url);
-		if (result.opened) return { message: `Design canvas: ${url}`, level: "info", url, opened: true };
+		if (result.opened) return { message: `Design canvas: ${url}${loginLine}`, level: "info", url, opened: true };
 		const reason = result.error ? ` (${result.error})` : "";
-		return { message: `Design canvas: ${url}\nThe browser could not be opened${reason}. Open the URL manually.`, level: "warning", url, opened: false };
+		return { message: `Design canvas: ${url}${loginLine}\nThe browser could not be opened${reason}. Open the URL manually.`, level: "warning", url, opened: false };
 	}
 
 	return { open, stop, url: () => running?.url };
@@ -490,6 +499,11 @@ async function handoffTool(cwd: string, params: DesignToolParams): Promise<Desig
 }
 
 /** The gentle_design tool: the /gentle:design actions on the session's canvas, without sending a user message. */
+function optionalEnv(value: string | undefined): string | undefined {
+	const trimmed = value?.trim();
+	return trimmed ? trimmed : undefined;
+}
+
 export async function runDesignTool(cwd: string, params: DesignToolParams, canvas: DesignCanvas): Promise<DesignToolResult> {
 	if (params.action === "handoff") return handoffTool(cwd, params);
 	if (params.action === "list") return listDesignTool(cwd, canvas);

@@ -7,7 +7,7 @@ Branch: `feat/gentle-design` (worktree `.worktrees/gentle-design`, base `origin/
 
 Requirements S2-S8 come from the plan the user accepted (L2, L3). Wording outside quotes is the plan's, not the user's.
 
-- **S1 Provider independence.** User: "planifiquemos como podriamos dar eso sin tener que pasr por claude, desde gentle shell directo por nosotros sin necesidad de usar dicho proveedor". Acceptance: no code path calls a provider-specific API; the feature works with whatever model the Pi session uses; the only network traffic is the loopback canvas server; artboards are self-contained (no CDN, no remote fonts or scripts).
+- **S1 Provider independence.** User: "planifiquemos como podriamos dar eso sin tener que pasr por claude, desde gentle shell directo por nosotros sin necesidad de usar dicho proveedor". Acceptance: no code path calls a provider-specific API; the feature works with whatever model the Pi session uses; by default the only network traffic is the local canvas server, and explicit remote canvas configuration may bind the canvas server to a configured host under the remote safety rules in S6; artboards are self-contained (no CDN, no remote fonts or scripts).
 - **S2 Design skill.** A bundled skill (`skills/design/SKILL.md`, name `gentle-design`) makes the model:
   - take the brief: goal, layout, content and audience, with at most one clarifying question;
   - generate several clearly different directions (3 by default, or the number the user asks for), each labeled with the tradeoff it makes;
@@ -22,11 +22,14 @@ Requirements S2-S8 come from the plan the user accepted (L2, L3). Wording outsid
   - zoom (buttons, and Ctrl/Cmd + wheel), pan and fit;
   - live reload when an artboard file or the manifest changes.
 - **S5 Comments back to the session.** In comment mode, clicking an element in an artboard and typing a comment sends the session one message with: the design slug, the artboard file, a CSS selector for the element, a short text excerpt of the element, and the comment. While the agent is busy, the message is queued as a follow-up. The agent edits that artboard, and the canvas reloads.
-- **S6 Local server safety.** The server:
-  - binds `127.0.0.1` only, on a random port;
+- **S6 Canvas server safety.** The server:
+  - by default binds `127.0.0.1` on a random port, preserving the original local-only behavior;
+  - when `GENTLE_DESIGN_HOST` is set, binds the configured host, but requires `GENTLE_DESIGN_API_KEY` before opening the port when that host is outside loopback or is a wildcard address;
+  - uses `GENTLE_DESIGN_PUBLIC_HOST` (defaulting to the bind host) for returned URLs, allowed `Host` headers, allowed `Origin` values, and CSP; by default this is `localhost` or `127.0.0.1`, never a wildcard;
   - requires a per-server random token on every route;
-  - rejects a `Host` header that is not its own loopback address;
-  - accepts POST only with `Origin` equal to its own origin and a JSON content type;
+  - rejects a `Host` header that is not its configured public host, `localhost`, or `127.0.0.1`; and rejects POSTs whose `Origin` is not one of its allowed origins;
+  - accepts POST only with a JSON content type;
+  - when an API key is configured, protected routes require it either through the `gd_api_key` cookie set by `GET /<token>/login?key=<apiKey>` or through an `Authorization: Bearer <apiKey>` header for programmatic clients;
   - serves only files under `design/` in the session cwd (no traversal, no symlink escape);
   - bounds comment length;
   - renders artboards in iframes sandboxed without `allow-same-origin`;

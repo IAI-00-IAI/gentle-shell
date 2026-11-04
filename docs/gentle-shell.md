@@ -443,7 +443,45 @@ The canvas opens in navigation mode: the mouse wheel, trackpad, and drag always 
 - ODD link: a design that comes from a tracked ODD feature records it in `design.json` as `"feature": "odd/tasks/<feature>.md"`, and the skill appends a Log entry naming the design to that document; small, untracked work has no `feature` and stays standalone. The canvas top bar shows **Feature: <path>** for a linked design, and the handoff asks to track the implementation in that document instead of sizing it from scratch. Only a relative `odd/tasks/<name>.md` path is accepted; any other value is ignored and reported as a warning in the canvas.
 - Handoff state: every handoff (the canvas button, the command, or the tool's `implement`) is recorded in `design/<slug>/handoffs.json` before it is sent, and the handed-off artboard becomes the design's **chosen** direction: its header shows a **Chosen** badge and an accent frame, and the other artboards show **Alternative**. Handing off another artboard moves the mark. After **Send**, a toast confirms it, and the artboard's header shows **Queued** (the agent was busy) or **Implementing…** (it was idle), then **In progress** and **Implemented ✓** as the agent reports them with the `gentle_design` tool's `handoff` action, which the handoff message asks it to call. The canvas updates live, the badge names the linked feature document, and `list` reports each design's chosen artboard and handoff states. When the agent marks an artboard implemented with the `previewUrl` of the running app, **Compare** shows the artboard and the app side by side at the artboard's size, at 100%, with **Scale to fit** when the pair is wider than the window; exit with **Back to canvas** or `Shift+Esc`. The preview must be an `http`/`https` URL on `localhost`, `127.0.0.1`, or `[::1]` (any port, no credentials, at most 2048 characters); the tool and the server refuse anything else. Prefer `localhost` or `127.0.0.1`: CSP has no IPv6 source form, so browsers do not frame a `[::1]` preview, and Compare says so and offers the new tab. An app that refuses to be framed (`X-Frame-Options` or `frame-ancestors`) still opens with **Open in new tab**, which the Compare view always shows.
 
-The canvas server binds `127.0.0.1` on a random port and needs a random per-server token in every URL. It rejects any `Host` other than its own loopback address, accepts every write (comments, Send all, resolve/reopen, Implement) only with its own `Origin` (`http://127.0.0.1:<port>` or `http://localhost:<port>`), a JSON body, and bounded lengths, keeps at most 500 comments per design, and serves only files under `design/` in the session cwd (design folders, plus exactly `design/system.html` for the system board), resolved by real path so neither `..` nor a symlink can escape. Artboards run in iframes sandboxed without `allow-same-origin`, so they cannot read the canvas or post comments themselves. The canvas may frame only loopback origins (its `frame-src`), and the Compare preview frame keeps its own origin (`allow-scripts allow-same-origin allow-forms allow-popups`, never top navigation) only because it is another origin than the canvas: the canvas refuses a preview on its own port, and sends no referrer, so the app never sees the token. No other network traffic is involved. The server and the tool write `comments.json` and `handoffs.json` one at a time through an atomic replace, and never overwrite a file they cannot parse.
+The canvas server binds `127.0.0.1` by default on a random port and needs a random per-server token in every URL. It rejects any `Host` other than its configured public host, `localhost`, or `127.0.0.1`; in the default loopback case that is the same protection as before. It accepts every write (comments, Send all, resolve/reopen, Implement) only with one of its allowed origins (`http://127.0.0.1:<port>` or `http://localhost:<port>` by default, plus `http://<publicHost>:<port>` when configured), a JSON body, and bounded lengths, keeps at most 500 comments per design, and serves only files under `design/` in the session cwd (design folders, plus exactly `design/system.html` for the system board), resolved by real path so neither `..` nor a symlink can escape. Artboards run in iframes sandboxed without `allow-same-origin`, so they cannot read the canvas or post comments themselves. The canvas may frame only its allowed origins (its `frame-src`), and the Compare preview frame keeps its own origin (`allow-scripts allow-same-origin allow-forms allow-popups`, never top navigation) only because it is another origin than the canvas: the canvas refuses a preview on its own port, and sends no referrer, so the app never sees the token. Without remote canvas configuration, no other network traffic is involved. The server and the tool write `comments.json` and `handoffs.json` one at a time through an atomic replace, and never overwrite a file they cannot parse.
+
+#### Remote canvas access
+
+By default, the canvas is local-only. The recommended way to open it from another machine is an SSH tunnel, because it does not expose the canvas to the network:
+
+```bash
+ssh -L <PUERTO>:127.0.0.1:<PUERTO> usuario@maquina-con-pi
+```
+
+Then open the canvas on the remote machine at:
+
+```text
+http://localhost:<PUERTO>/<token>/d/<slug>/
+```
+
+If the canvas must listen beyond `localhost`, set:
+
+```bash
+GENTLE_DESIGN_HOST=192.168.1.10
+GENTLE_DESIGN_PUBLIC_HOST=192.168.1.10
+GENTLE_DESIGN_API_KEY=your-api-key
+```
+
+`GENTLE_DESIGN_HOST` is where Node listens. `GENTLE_DESIGN_PUBLIC_HOST` is the host used in returned URLs, allowed `Host` headers, allowed `Origin` values, and CSP; by default it is the bind host, or `127.0.0.1` when the bind host is a wildcard. When `GENTLE_DESIGN_HOST` is outside loopback or is a wildcard address, `GENTLE_DESIGN_API_KEY` is required before the server opens its port.
+
+For browser use, open the login URL:
+
+```text
+http://<publicHost>:<port>/<token>/login?key=<apiKey>
+```
+
+A valid login sets an `HttpOnly` cookie named `gd_api_key` and redirects to the canvas URL. Programmatic clients can instead send:
+
+```text
+Authorization: Bearer <apiKey>
+```
+
+The per-server token remains a bearer credential. Do not expose the canvas on an untrusted network without TLS or stronger network controls; SSH tunneling is preferred.
 
 ### Gentle Music
 

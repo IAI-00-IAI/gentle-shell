@@ -1094,7 +1094,133 @@ test("a batch attaches at most six screenshots, in order, and names the rest for
 	assert.match(text, /c7\.png \(open it with the read tool\)\n/);
 	const content = designCommentBatchContent(batch);
 	assert.ok(Array.isArray(content));
-	assert.deepEqual(content, [{ type: "text", text }, ...[0, 2, 3, 4, 5, 6].map((index) => ({ type: "image", data: `data${index}`, mimeType: "image/png" }))]);
+	assert.deepEqual(content, [{ type: "text" as const, text }, ...[0, 2, 3, 4, 5, 6].map((index) => ({ type: "image" as const, data: `data${index}`, mimeType: "image/png" }))]);
 	const plain = batch.map(({ screenshot: _drop, ...rest }) => rest);
 	assert.equal(designCommentBatchContent(plain), formatDesignCommentBatch(plain));
 });
+
+async function startRemote(t: TestContext, options: { host?: string; publicHost?: string; apiKey?: string } = {}) {
+	const { root } = fixture(t);
+	const comments: DesignComment[] = [];
+	const server = await startDesignCanvasServer({
+		designRoot: root,
+		host: options.host,
+		publicHost: options.publicHost,
+		apiKey: options.apiKey,
+		onComment: (comment) => { comments.push(comment); },
+		onImplement: () => undefined,
+		randomToken: () => TOKEN,
+	});
+	t.after(() => server.close());
+	return { server, root, comments, port: server.port, base: `/${TOKEN}/`, baseUrl: server.baseUrl };
+}
+
+test("default loopback canvas remains available without an API key", async (t) => {
+	const { server, port, base } = await startRemote(t, { host: "127.0.0.1", publicHost: "127.0.0.1" });
+	assert.equal(server.apiKeyEnabled, false);
+	assert.match(server.baseUrl, /^http:\/\/127\.0\.0\.1:\d+\//);
+	assert.equal(server.url, `${server.baseUrl}${TOKEN}/`);
+	const page = await rawRequest(port, base, { host: `127.0.0.1:${port}` });
+	assert.equal(page.status, 200);
+	assert.equal((await rawRequest(port, `${base}api/designs`)).status, 200);
+	const login = await rawRequest(port, `${base}login?key=x`, { host: `127.0.0.1:${port}` });
+	assert.equal(login.status, 404);
+});
+
+test("configured remote canvas uses the public host in its URL and CSP", async (t) => {
+	const { server, port, base, baseUrl } = await startRemote(t, {
+		host: "0.0.0.0",
+		publicHost: "192.168.1.10",
+		apiKey: "remote-key",
+	});
+	assert.equal(server.apiKeyEnabled, true);
+	assert.match(server.baseUrl, /^http:\/\/192\.168\.1\.10:\d+\//);
+	assert.equal(server.url, `${baseUrl}${TOKEN}/`);
+	const page = await rawRequest(port, base, { host: `192.168.1.10:${port}` });
+	assert.equal(page.status, 401);
+	const artboard = await rawRequest(port, `${base}files/alpha/01-hero.html`, { host: `192.168.1.10:${port}` });
+	assert.equal(artboard.status, 200);
+	assert.match(String(artboard.headers["content-security-policy"]), /frame-ancestors http:\/\/192\.168\.1\.10:\d+/);
+});
+
+test("remote canvas rejects startup without an API key for non-loopback binding", async (t) => {
+	const { root } = fixture(t);
+	await assert.rejects(startDesignCanvasServer({ designRoot: root, host: "0.0.0.0", onComment: () => {} }), /GENTLE_DESIGN_API_KEY/);
+	await assert.rejects(startDesignCanvasServer({ designRoot: root, publicHost: "not-a host", onComment: () => {} }));
+	await assert.rejects(startDesignCanvasServer({ designRoot: root, host: "not-an-ip", onComment: () => {} }));
+});
+
+test("public and loopback Host headers are accepted, foreign Host headers are rejected", async (t) => {
+	const { port, base } = await startRemote(t, { host: "0.0.0.0", publicHost: "192.168.1.10", apiKey: "remote-key" });
+	const publicHost = `192.168.1.10:${port}`;
+	assert.equal((await rawRequest(port, base, { host: publicHost })).status, 401);
+	assert.equal((await rawRequest(port, base, { host: `127.0.0.1:${port}` })).status, 401);
+	assert.equal((await rawRequest(port, base, { host: `localhost:${port}` })).status, 401);
+	assert.equal((await rawRequest(port, base, { host: "192.168.2.10:9999" })).status, 421);
+	assert.equal((await rawRequest(port, base, { host: null })).status, 421);
+});
+
+test("login cookie, Bearer API key, and missing authentication control access", async (t) => {
+	const { server, port, base } = await startRemote(t, { host: "0.0.0.0", publicHost: "192.168.1.10", apiKey: "remote-key" });
+	const publicHost = `192.168.1.10:${port}`;
+	const badLogin = await rawRequest(port, `${base}login?key=wrong-key`, { host: publicHost });
+	assert.equal(badLogin.status, 401);
+	const login = await rawRequest(port, `${base}login?key=remote-key`, { host: publicHost });
+	assert.equal(login.status, 302);
+	assert.equal(String(login.headers.location), server.url);
+	const cookie = String(login.headers["set-cookie"] ?? "");
+	assert.match(cookie, /gd_api_key=remote-key; HttpOnly; SameSite=Strict; Path=\//);
+	const withCookie = await rawRequest(port, `${base}api/designs`, { host: publicHost, headers: { Cookie: cookie } });
+	assert.equal(withCookie.status, 200);
+	const withBearer = await rawRequest(port, `${base}api/designs`, { host: publicHost, headers: { Authorization: "Bearer remote-key" } });
+	assert.equal(withBearer.status, 200);
+	const wrongBearer = await rawRequest(port, `${base}api/designs`, { host: publicHost, headers: { Authorization: "Bearer wrong-key" } });
+	assert.equal(wrongBearer.status, 401);
+	assert.equal((await rawRequest(port, `${base}api/designs`, { host: publicHost })).status, 401);
+});
+
+test("static routes remain readable without authentication, while API routes do not", async (t) => {
+	const { port, base } = await startRemote(t, { host: "0.0.0.0", publicHost: "192.168.1.10", apiKey: "remote-key" });
+	const publicHost = `192.168.1.10:${port}`;
+	for (const path of [`${base}files/alpha/01-hero.html`, `${base}files/alpha/styles.css`, `${base}files/alpha/logo.svg`, `${base}assets/inspector.js`]) {
+		assert.equal((await rawRequest(port, path, { host: publicHost })).status, 200, path);
+	}
+	for (const path of [`${base}`, `${base}api/designs`, `${base}api/designs/alpha`, `${base}events`]) {
+		assert.equal((await rawRequest(port, path, { host: publicHost })).status, 401, path);
+	}
+});
+
+test("remote canvas accepts the configured public Origin for POSTs and rejects foreign Origins", async (t) => {
+	const { port, base } = await startRemote(t, { host: "0.0.0.0", publicHost: "192.168.1.10", apiKey: "remote-key" });
+	const publicHost = `192.168.1.10:${port}`;
+	const login = await rawRequest(port, `${base}login?key=remote-key`, { host: publicHost });
+	const cookie = String(login.headers["set-cookie"] ?? "");
+	const comment = JSON.stringify({ mode: "send", slug: "alpha", file: "01-hero.html", selector: "h1", comment: "Make it calm", excerpt: "Hero" });
+	const accepted = await rawRequest(port, `${base}api/comments`, {
+		method: "POST",
+		host: publicHost,
+		headers: { Origin: `http://${publicHost.replace(/^\//, "")}`, "Content-Type": "application/json", Cookie: cookie },
+		body: comment,
+	});
+	assert.equal(accepted.status, 202);
+	const rejected = await rawRequest(port, `${base}api/comments`, {
+		method: "POST",
+		host: publicHost,
+		headers: { Origin: "http://evil.example", "Content-Type": "application/json", Cookie: cookie },
+		body: comment,
+	});
+	assert.equal(rejected.status, 403);
+	const missingOrigin = await rawRequest(port, `${base}api/comments`, {
+		method: "POST",
+		host: publicHost,
+		headers: { "Content-Type": "application/json", Cookie: cookie },
+		body: comment,
+	});
+	assert.equal(missingOrigin.status, 403);
+});
+
+test("non-loopback binding rejects requests to other Host ports before authentication", async (t) => {
+	const { port, base } = await startRemote(t, { host: "0.0.0.0", publicHost: "192.168.1.10", apiKey: "remote-key" });
+	assert.equal((await rawRequest(port, base, { host: `192.168.1.11:${port}` })).status, 421);
+	assert.equal((await rawRequest(port, base, { host: "192.168.1.11:9999" })).status, 421);
+})
