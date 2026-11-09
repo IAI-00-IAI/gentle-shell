@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>Gentle Shell design tokens</title>
+<style>
+:root {
+  --font-sans-wizard: Inter, "SF Pro Text", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono-wizard: "IosevkaTerm NF", "Iosevka Term", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --font-sans-canvas: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono-canvas: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-terminal: "IosevkaTerm NF", "Iosevka Term", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+
+  --bg: #060407;
+  --bg-panel: #100A0F;
+  --bg-element: #100A0F;
+  --user-message-bg: #2A1523;
+  --bg-subtle: #100A0F;
+  --border: #563040;
+  --border-subtle: #2A1720;
+  --text: #F6EFF3;
+  --muted: #A78E9B;
+  --dim: #76616B;
+  --accent: #F095C8;
+  --deep-pink: #C96AA2;
+  --active-pink: #FFB1DD;
+  --champagne: #E0C27A;
+  --pearl: #D2CBD0;
+  --soft-rose: #D7A0B8;
+  --powder-blue: #A9C7EE;
+  --mint: #B4E7C7;
+  --peach: #F2B86D;
+  --sky: #C4DAF6;
+  --warning: #F2B86D;
+  --error: #FF718F;
+  --selection: #28121E;
+  --tool-pending-bg: #100A0F;
+  --tool-success-bg: #151316;
+  --tool-error-bg: #261019;
+  --info-bg: #100A0F;
+
+  --gentle-bg: #06080f;
+  --gentle-bg-panel: #06080f;
+  --gentle-bg-element: #06080f;
+  --gentle-user-message-bg: #161D2E;
+  --gentle-bg-subtle: #0d0f14;
+  --gentle-surface-line: #0d0f14;
+  --gentle-border: #313342;
+  --gentle-border-subtle: #232A40;
+  --gentle-text: #F3F6F9;
+  --gentle-muted: #5C6170;
+  --gentle-dim: #5C6170;
+  --gentle-disabled: #5C6170;
+  --gentle-accent: #E0C15A;
+  --gentle-blue: #7FB4CA;
+  --gentle-secondary: #A3B5D6;
+  --gentle-heading: #B5B2D0;
+  --gentle-syntax-comment: #8394A3;
+  --gentle-syntax-keyword: #C99AD6;
+  --gentle-syntax-function: #B99BF2;
+  --gentle-syntax-string: #DFBD76;
+  --gentle-syntax-number: #A4DAA7;
+  --gentle-syntax-type: #8FB8DD;
+  --gentle-syntax-punctuation: #96A2B0;
+  --gentle-green: #B7CC85;
+  --gentle-warning: #DEBA87;
+  --gentle-red: #CB7C94;
+  --gentle-bright-black: #8394A3;
+  --gentle-bright-green: #D1E8A9;
+  --gentle-bright-yellow: #DEBA87;
+  --gentle-bright-purple: #B99BF2;
+  --gentle-bright-magenta: #C99AD6;
+  --gentle-bright-blue: #8FB8DD;
+  --gentle-selection: #232A40;
+  --gentle-tool-success-bg: #1a2e1a;
+  --gentle-tool-pending-bg: #0d0f14;
+  --gentle-tool-error-bg: #2e1a1a;
+  --gentle-info-bg: #0d0f14;
+
+  --sexy-bg: #060407;
+  --sexy-bg-panel: #100A0F;
+  --sexy-bg-element: #100A0F;
+  --sexy-user-message-bg: #2E0F1F;
+  --sexy-bg-subtle: #100A0F;
+  --sexy-border: #563040;
+  --sexy-border-subtle: #2A1720;
+  --sexy-text: #F6EFF3;
+  --sexy-muted: #A78E9B;
+  --sexy-dim: #76616B;
+  --sexy-accent: #F43888;
+  --sexy-deep-pink: #BF0F50;
+  --sexy-active-pink: #FF4F9A;
+  --sexy-champagne: #E0C27A;
+  --sexy-violet: #C49BFF;
+  --sexy-pearl: #D2CBD0;
+  --sexy-soft-rose: #D7A0B8;
+  --sexy-powder-blue: #A9C7EE;
+  --sexy-warning: #F2B86D;
+  --sexy-error: #FF718F;
+  --sexy-selection: #28121E;
+  --sexy-tool-pending-bg: #100A0F;
+  --sexy-tool-success-bg: #151316;
+  --sexy-tool-error-bg: #261019;
+  --sexy-info-bg: #100A0F;
+
+  --wizard-bg: #1a1218;
+  --wizard-bg-deep: #000000;
+  --wizard-surface: #20161e;
+  --wizard-surface-1: #241822;
+  --wizard-surface-2: #342230;
+  --wizard-border: #342230;
+  --wizard-border-soft: #ffffff17;
+  --wizard-text: #f6eff3;
+  --wizard-text-muted: #a78e9b;
+  --wizard-text-faint: #76616b;
+  --wizard-accent: #f095c8;
+  --wizard-accent-strong: #ff76c3;
+  --wizard-accent-soft: #ffb1dd;
+  --wizard-success: #b4e7c7;
+  --wizard-warning: #e0c27a;
+  --wizard-error: #ff718f;
+  --wizard-info: #a9c7ee;
+
+  --gd-bg: #111214;
+  --gd-stage: #1a1b1e;
+  --gd-panel: #222327;
+  --gd-border: #3a3b40;
+  --gd-text: #ececee;
+  --gd-muted: #a9abb2;
+  --gd-accent: #8ab4ff;
+  --gd-accent-text: #0b1220;
+  --gd-danger: #ff9b9b;
+  --gd-focus: #ffd479;
+  --gd-pin: #8ab4ff;
+  --gd-pin-resolved: #7d8a7f;
+  --gd-success: #9be0a8;
+
+  --brand-banner-start: #120d16;
+  --brand-banner-middle: #251124;
+  --brand-banner-end: #0b0910;
+  --brand-accent: #f095c8;
+  --brand-soft-accent: #d7a0b8;
+  --brand-wordmark: #fff7f1;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --glow: 0 10px 30px #f095c84d;
+  --glow-hover: 0 14px 36px #f095c86b;
+  --shadow-panel: 0 24px 60px #00000073, 0 0 40px #f095c81a;
+  --shadow-wordmark-mark: 0 6px 18px #f095c826;
+  --shadow-stage-ring: 0 0 0 4px #f095c826, var(--glow);
+  --shadow-accent-inset: inset 0 1px 0 #f095c81f;
+  --shadow-error: 0 10px 30px #ff718f14;
+  --shadow-progress-value: 0 0 16px #ffb1dd66;
+  --shadow-log-inset: inset 0 1px 0 #ffffff0a;
+  --shadow-canvas-artboard: 0 2px 16px rgba(0, 0, 0, 0.5);
+  --shadow-shield-hint: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-back-button: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-popover-toast: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --gd-inv-zoom: 1;
+  --shadow-chosen-artboard: 0 0 0 calc(3px * var(--gd-inv-zoom, 1)) var(--gd-accent), 0 2px 16px rgba(0, 0, 0, 0.5);
+  --shadow-shield-hover: inset 0 0 0 calc(2px * var(--gd-inv-zoom, 1)) var(--gd-accent);
+  --shadow-shield-focus: inset 0 0 0 calc(3px * var(--gd-inv-zoom, 1)) var(--gd-focus);
+}
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+body {
+  margin: 0;
+  width: 1440px;
+  max-width: 1440px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans-wizard);
+  font-size: 16px;
+  line-height: 1.6;
+}
+h1, h2, h3, h4, p, figure, dl, dd, dt { margin: 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--active-pink); }
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  background: var(--bg-panel);
+  color: var(--text);
+  padding: 12px 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  z-index: 10;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.skip-link:focus { top: 0; }
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+}
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand img { width: 48px; height: 48px; display: block; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.brand h1 {
+  font-size: clamp(34px, 4.6vw, 58px);
+  line-height: 1.08;
+  font-weight: 800;
+  margin: 0;
+}
+.brand p {
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--muted);
+}
+.site-nav { display: flex; flex-wrap: wrap; gap: 12px; list-style: none; padding: 0; margin: 0; }
+.site-nav li { font-size: 12px; line-height: 1.4; color: var(--muted); }
+.artboard { padding: 40px 40px 56px; }
+section { margin-top: 40px; }
+h2 {
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+h3 {
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 700;
+  margin: 24px 0 12px;
+}
+.source-note {
+  font-family: var(--font-mono-canvas);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--powder-blue);
+  margin-bottom: 16px;
+}
+table { width: 100%; border-collapse: collapse; }
+caption {
+  font-family: var(--font-sans-wizard);
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+  text-align: left;
+  padding: 0 0 12px;
+  color: var(--muted);
+}
+th, td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: middle;
+}
+thead th {
+  background: var(--bg-subtle);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+tbody tr:last-child { border-bottom: 0; }
+.swatch {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+code {
+  font-family: var(--font-mono-wizard);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.token-name { color: var(--muted); }
+.hex { color: var(--active-pink); }
+.usage { color: var(--text); }
+.palette-table { background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
+.palette-table caption { padding: 16px 24px 8px; }
+.palette-table th, .palette-table td { border-top: 1px solid var(--border-subtle); }
+.palette-table thead th { border-top: 0; }
+.type-scale { display: grid; gap: 12px; }
+.type-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  padding: 16px;
+}
+.type-role {
+  font-family: var(--font-mono-canvas);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--muted);
+}
+.type-meta {
+  font-family: var(--font-sans-wizard);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--powder-blue);
+  margin-top: 4px;
+}
+.type-sample { margin-top: 8px; color: var(--text); }
+.type-terminal-body { font-family: var(--font-terminal); font-size: 13px; line-height: 17px; font-weight: normal; }
+.type-wizard-base { font-family: var(--font-sans-wizard); font-size: 16px; line-height: 1.6; font-weight: normal; }
+.type-display {
+  font-family: var(--font-sans-wizard);
+  font-size: clamp(34px, 4.6vw, 58px);
+  line-height: 1.08;
+  font-weight: 800;
+}
+.type-section { font-family: var(--font-sans-wizard); font-size: 18px; line-height: 1.4; font-weight: 700; }
+.type-lead {
+  font-family: var(--font-sans-wizard);
+  font-size: clamp(17px, 1.6vw, 18px);
+  line-height: 1.6;
+  font-weight: normal;
+}
+.type-card-title { font-family: var(--font-sans-wizard); font-size: 16px; font-weight: 700; line-height: 1.4; }
+.type-card-body { font-family: var(--font-sans-wizard); font-size: 15px; line-height: 1.7; color: var(--muted); }
+.type-inline-code { font-family: var(--font-mono-wizard); font-size: 0.9em; line-height: 1.6; }
+.type-detail-code { font-family: var(--font-mono-wizard); font-size: 13px; line-height: 1.6; color: var(--soft-rose); }
+.type-topbar-note { font-family: var(--font-sans-wizard); font-size: 12px; line-height: 1.4; font-weight: 500; color: var(--muted); }
+.type-stage-label { font-family: var(--font-sans-wizard); font-size: 12px; line-height: 1.2; font-weight: 600; color: var(--champagne); }
+.type-eyebrow { font-family: var(--font-sans-wizard); font-size: 12px; line-height: 1.4; font-weight: 600; color: var(--active-pink); }
+.type-plan-step-marker { font-family: var(--font-mono-canvas); font-size: 12px; line-height: 1; font-weight: 600; }
+.type-step-icon { font-family: var(--font-sans-wizard); font-size: 12px; line-height: 1; font-weight: 700; color: var(--mint); }
+.type-step-status { font-family: var(--font-sans-wizard); font-size: 11px; line-height: 1.4; font-weight: 600; color: var(--muted); }
+.type-caption-log { font-family: var(--font-mono-wizard); font-size: 13px; line-height: 1.7; color: var(--pearl); }
+.type-command-line { font-family: var(--font-mono-wizard); font-size: 16px; line-height: 1.4; color: var(--text); }
+.type-progress-count { font-family: var(--font-sans-wizard); font-size: 14px; line-height: 1.4; font-weight: 600; color: var(--active-pink); }
+.type-wordmark-mark { font-family: var(--font-sans-wizard); font-size: 14px; line-height: 1; font-weight: 700; }
+.type-wordmark { font-family: var(--font-sans-wizard); font-size: 18px; line-height: 1.2; font-weight: 800; }
+.type-canvas-base { font-family: var(--font-sans-canvas); font-size: 14px; line-height: 1.6; color: var(--text); }
+.type-canvas-title { font-family: var(--font-sans-canvas); font-size: 15px; line-height: 1.5; font-weight: 600; }
+.type-canvas-artboard-title { font-family: var(--font-sans-canvas); font-size: 16px; line-height: 1.5; font-weight: 600; color: var(--gd-text); }
+.type-canvas-meta { font-family: var(--font-sans-canvas); font-size: 12px; line-height: 1.4; color: var(--gd-muted); }
+.type-canvas-pin { font-family: var(--font-sans-canvas); font-size: 12px; line-height: 1.2; font-weight: 700; color: var(--gd-pin); }
+.spacing-table th:first-child { width: 120px; }
+.radius-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+}
+.radius-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}
+.radius-box {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border: 2px solid var(--accent);
+}
+.radius-box.radius-pill { height: 16px; width: 52px; }
+.radius-box.radius-odd { border-radius: 13px 13px 13px 2px; }
+.radius-box.radius-round { border-radius: 50%; }
+.radius-item code { color: var(--active-pink); }
+.shadow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+}
+.shadow-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  padding: 32px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.shadow-box {
+  height: 40px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-element);
+}
+.shadow-ring {
+  height: 40px;
+  width: 52px;
+  margin: 0 auto 12px;
+  border-radius: var(--radius-sm);
+  background: var(--user-message-bg);
+}
+.component-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+}
+.component-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-element);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-panel);
+}
+.component-card h3 { margin-top: 0; }
+.btn-group { display: flex; flex-direction: column; gap: 12px; }
+.btn {
+  font-family: var(--font-sans-wizard);
+  font-size: 16px;
+  line-height: 1.4;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+}
+.btn-primary:hover { box-shadow: var(--glow-hover); }
+.btn-secondary {
+  background: var(--bg-subtle);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-secondary:hover {
+  color: var(--active-pink);
+  border-color: var(--accent);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  color: var(--muted);
+  background: var(--bg-subtle);
+  border-color: var(--border-subtle);
+  box-shadow: 0;
+}
+.card-stack { display: grid; gap: 12px; }
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-element);
+  padding: 22px 24px;
+}
+.card h3 { margin: 0 0 8px; }
+.card p { font-size: 15px; line-height: 1.7; color: var(--muted); margin: 0; }
+.alert-stack { display: grid; gap: 12px; }
+.alert {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  padding: 12px 24px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.alert-info { border-left: 3px solid var(--powder-blue); }
+.alert-success { border-left: 3px solid var(--mint); }
+.alert-warning { border-left: 3px solid var(--peach); }
+.alert-error {
+  border-left: 3px solid var(--error);
+  box-shadow: var(--shadow-error);
+}
+.pill-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+  color: var(--muted);
+  font-family: var(--font-mono-wizard);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.pill-accent {
+  background: var(--user-message-bg);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.progress { margin-top: 12px; }
+.progress-track {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--wizard-border-soft);
+  overflow: hidden;
+}
+.progress-value {
+  height: 100%;
+  width: 60%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right, var(--accent), var(--powder-blue));
+  box-shadow: var(--shadow-progress-value);
+}
+.brand-section {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  padding: 32px;
+}
+.brand-banner {
+  margin: 0 0 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--brand-banner-start);
+}
+.brand-banner svg { width: 100%; height: auto; display: block; }
+.brand-banner svg text {
+  font-family: var(--font-sans-canvas);
+  font-size: 30px;
+  fill: var(--brand-soft-accent);
+}
+.brand-divider {
+  margin: 0 0 32px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--brand-banner-end);
+  padding: 16px;
+}
+.brand-divider svg { width: 100%; height: 40px; display: block; }
+.fig-caption {
+  font-family: var(--font-mono-canvas);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--powder-blue);
+  margin-top: 8px;
+}
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+}
+.asset-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  padding: 12px;
+}
+.asset-item img {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  display: block;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.logo-item img { height: 96px; width: auto; max-width: 100%; }
+.banner-gif-item { grid-column: span 2; }
+.banner-gif-item img { height: 120px; width: 100%; object-fit: cover; }
+.footer {
+  margin-top: 56px;
+  padding: 24px 32px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.footer code { color: var(--powder-blue); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to Gentle Shell design tokens</a>
+<header class="site-header" role="banner">
+  <div class="brand">
+    <img src="assets/gentle-logo-only.png" alt="Gentle Shell logo" width="48" height="48">
+    <div>
+      <h1>Gentle Shell design tokens</h1>
+      <p>Primary shell look: Gentleman-Cute rose</p>
+    </div>
+  </div>
+  <nav class="site-nav" aria-label="Token sections">
+    <ul>
+      <li><a href="#primary-palette">Primary palette</a></li>
+      <li><a href="#other-pi-palettes">Other Pi palettes</a></li>
+      <li><a href="#css-palettes">CSS palettes</a></li>
+      <li><a href="#type-scale">Type scale</a></li>
+      <li><a href="#spacing-scale">Spacing</a></li>
+      <li><a href="#radius-scale">Radius</a></li>
+      <li><a href="#shadow-scale">Shadows</a></li>
+      <li><a href="#components">Components</a></li>
+      <li><a href="#brand-assets">Brand assets</a></li>
+    </ul>
+  </nav>
+</header>
+<main id="main" class="artboard">
+  <section id="primary-palette" aria-labelledby="primary-palette-title">
+    <h2 id="primary-palette-title">Primary shell palette — Gentleman-Cute</h2>
+    <p class="source-note">Source: themes/Gentleman-Cute.json</p>
+    <table class="palette-table">
+      <caption>Gentleman-Cute tokens: 28 colors</caption>
+      <thead>
+        <tr>
+          <th scope="col">Token</th>
+          <th scope="col">Value</th>
+          <th scope="col">Usage</th>
+          <th scope="col">Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="token-name">bg</code></td><td><span class="swatch" style="background: var(--bg)"></span><code class="hex">#060407</code></td><td class="usage">Page background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">bgPanel</code></td><td><span class="swatch" style="background: var(--bg-panel)"></span><code class="hex">#100A0F</code></td><td class="usage">Panel background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">bgElement</code></td><td><span class="swatch" style="background: var(--bg-element)"></span><code class="hex">#100A0F</code></td><td class="usage">Element or card background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">userMessageBg</code></td><td><span class="swatch" style="background: var(--user-message-bg)"></span><code class="hex">#2A1523</code></td><td class="usage">User message surface.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">bgSubtle</code></td><td><span class="swatch" style="background: var(--bg-subtle)"></span><code class="hex">#100A0F</code></td><td class="usage">Subtle surface and custom message background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">border</code></td><td><span class="swatch" style="background: var(--border)"></span><code class="hex">#563040</code></td><td class="usage">Primary border and scrollbar thumb.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">borderSubtle</code></td><td><span class="swatch" style="background: var(--border-subtle)"></span><code class="hex">#2A1720</code></td><td class="usage">Subtle border and disabled thinking surface.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">text</code></td><td><span class="swatch" style="background: var(--text)"></span><code class="hex">#F6EFF3</code></td><td class="usage">Primary text.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">muted</code></td><td><span class="swatch" style="background: var(--muted)"></span><code class="hex">#A78E9B</code></td><td class="usage">Muted text.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">dim</code></td><td><span class="swatch" style="background: var(--dim)"></span><code class="hex">#76616B</code></td><td class="usage">Dim text.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">accent</code></td><td><span class="swatch" style="background: var(--accent)"></span><code class="hex">#F095C8</code></td><td class="usage">Primary accent, links, list bullets.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">deepPink</code></td><td><span class="swatch" style="background: var(--deep-pink)"></span><code class="hex">#C96AA2</code></td><td class="usage">Search match background and markdown quote border.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">activePink</code></td><td><span class="swatch" style="background: var(--active-pink)"></span><code class="hex">#FFB1DD</code></td><td class="usage">Active accent and maximum thinking color.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">champagne</code></td><td><span class="swatch" style="background: var(--champagne)"></span><code class="hex">#E0C27A</code></td><td class="usage">Custom message label, tool title, markdown heading/code, bash mode.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">pearl</code></td><td><span class="swatch" style="background: var(--pearl)"></span><code class="hex">#D2CBD0</code></td><td class="usage">Neutral pearl variable.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">softRose</code></td><td><span class="swatch" style="background: var(--soft-rose)"></span><code class="hex">#D7A0B8</code></td><td class="usage">Thinking text.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">powderBlue</code></td><td><span class="swatch" style="background: var(--powder-blue)"></span><code class="hex">#A9C7EE</code></td><td class="usage">Syntax function and medium thinking.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">mint</code></td><td><span class="swatch" style="background: var(--mint)"></span><code class="hex">#B4E7C7</code></td><td class="usage">Success, markdown code, added diff.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">peach</code></td><td><span class="swatch" style="background: var(--peach)"></span><code class="hex">#F2B86D</code></td><td class="usage">Warning and syntax number.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">sky</code></td><td><span class="swatch" style="background: var(--sky)"></span><code class="hex">#C4DAF6</code></td><td class="usage">Syntax operator.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">warning</code></td><td><span class="swatch" style="background: var(--warning)"></span><code class="hex">#F2B86D</code></td><td class="usage">Warning color.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">error</code></td><td><span class="swatch" style="background: var(--error)"></span><code class="hex">#FF718F</code></td><td class="usage">Error color and removed diff.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">selection</code></td><td><span class="swatch" style="background: var(--selection)"></span><code class="hex">#28121E</code></td><td class="usage">Selected background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">toolPendingBg</code></td><td><span class="swatch" style="background: var(--tool-pending-bg)"></span><code class="hex">#100A0F</code></td><td class="usage">Pending tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">toolSuccessBg</code></td><td><span class="swatch" style="background: var(--tool-success-bg)"></span><code class="hex">#151316</code></td><td class="usage">Success tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">toolErrorBg</code></td><td><span class="swatch" style="background: var(--tool-error-bg)"></span><code class="hex">#261019</code></td><td class="usage">Error tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+        <tr><td><code class="token-name">infoBg</code></td><td><span class="swatch" style="background: var(--info-bg)"></span><code class="hex">#100A0F</code></td><td class="usage">Info background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Cute.json</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="other-pi-palettes" aria-labelledby="other-pi-palettes-title">
+    <h2 id="other-pi-palettes-title">Other Pi theme palettes</h2>
+    <h3 id="gentle-blue-title">Gentle — blue</h3>
+    <p class="source-note">Source: themes/Gentle.json</p>
+    <table class="palette-table">
+      <caption>Gentle tokens: 37 colors</caption>
+      <thead>
+        <tr><th scope="col">Token</th><th scope="col">Value</th><th scope="col">Usage</th><th scope="col">Source</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="token-name">bg</code></td><td><span class="swatch" style="background: var(--gentle-bg)"></span><code class="hex">#06080f</code></td><td class="usage">Page background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">bgPanel</code></td><td><span class="swatch" style="background: var(--gentle-bg-panel)"></span><code class="hex">#06080f</code></td><td class="usage">Panel background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">bgElement</code></td><td><span class="swatch" style="background: var(--gentle-bg-element)"></span><code class="hex">#06080f</code></td><td class="usage">Element or card background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">userMessageBg</code></td><td><span class="swatch" style="background: var(--gentle-user-message-bg)"></span><code class="hex">#161D2E</code></td><td class="usage">User message surface.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">bgSubtle</code></td><td><span class="swatch" style="background: var(--gentle-bg-subtle)"></span><code class="hex">#0d0f14</code></td><td class="usage">Subtle surface and custom message background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">surfaceLine</code></td><td><span class="swatch" style="background: var(--gentle-surface-line)"></span><code class="hex">#0d0f14</code></td><td class="usage">Surface line.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">border</code></td><td><span class="swatch" style="background: var(--gentle-border)"></span><code class="hex">#313342</code></td><td class="usage">Primary border.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">borderSubtle</code></td><td><span class="swatch" style="background: var(--gentle-border-subtle)"></span><code class="hex">#232A40</code></td><td class="usage">Subtle border, code block border, quote border, disabled thinking.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">text</code></td><td><span class="swatch" style="background: var(--gentle-text)"></span><code class="hex">#F3F6F9</code></td><td class="usage">Primary text.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">muted</code></td><td><span class="swatch" style="background: var(--gentle-muted)"></span><code class="hex">#5C6170</code></td><td class="usage">Muted text.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">dim</code></td><td><span class="swatch" style="background: var(--gentle-dim)"></span><code class="hex">#5C6170</code></td><td class="usage">Dim text.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">disabled</code></td><td><span class="swatch" style="background: var(--gentle-disabled)"></span><code class="hex">#5C6170</code></td><td class="usage">Disabled text.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">accent</code></td><td><span class="swatch" style="background: var(--gentle-accent)"></span><code class="hex">#E0C15A</code></td><td class="usage">Accent variable.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">blue</code></td><td><span class="swatch" style="background: var(--gentle-blue)"></span><code class="hex">#7FB4CA</code></td><td class="usage">Semantic accent, border accent, links, tool title, list bullet, bash mode.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">secondary</code></td><td><span class="swatch" style="background: var(--gentle-secondary)"></span><code class="hex">#A3B5D6</code></td><td class="usage">Secondary color and maximum thinking.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">heading</code></td><td><span class="swatch" style="background: var(--gentle-heading)"></span><code class="hex">#B5B2D0</code></td><td class="usage">Markdown heading.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">syntaxComment</code></td><td><span class="swatch" style="background: var(--gentle-syntax-comment)"></span><code class="hex">#8394A3</code></td><td class="usage">Syntax comment.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">syntaxKeyword</code></td><td><span class="swatch" style="background: var(--gentle-syntax-keyword)"></span><code class="hex">#C99AD6</code></td><td class="usage">Syntax keyword.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">syntaxFunction</code></td><td><span class="swatch" style="background: var(--gentle-syntax-function)"></span><code class="hex">#B99BF2</code></td><td class="usage">Syntax function.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">syntaxString</code></td><td><span class="swatch" style="background: var(--gentle-syntax-string)"></span><code class="hex">#DFBD76</code></td><td class="usage">Syntax string.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">syntaxNumber</code></td><td><span class="swatch" style="background: var(--gentle-syntax-number)"></span><code class="hex">#A4DAA7</code></td><td class="usage">Syntax number.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">syntaxType</code></td><td><span class="swatch" style="background: var(--gentle-syntax-type)"></span><code class="hex">#8FB8DD</code></td><td class="usage">Syntax type.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">syntaxPunctuation</code></td><td><span class="swatch" style="background: var(--gentle-syntax-punctuation)"></span><code class="hex">#96A2B0</code></td><td class="usage">Syntax punctuation.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">green</code></td><td><span class="swatch" style="background: var(--gentle-green)"></span><code class="hex">#B7CC85</code></td><td class="usage">Success, markdown code, added diff.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">warning</code></td><td><span class="swatch" style="background: var(--gentle-warning)"></span><code class="hex">#DEBA87</code></td><td class="usage">Warning, markdown quote, syntax operator.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">red</code></td><td><span class="swatch" style="background: var(--gentle-red)"></span><code class="hex">#CB7C94</code></td><td class="usage">Error and removed diff.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">brightBlack</code></td><td><span class="swatch" style="background: var(--gentle-bright-black)"></span><code class="hex">#8394A3</code></td><td class="usage">Bright black.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">brightGreen</code></td><td><span class="swatch" style="background: var(--gentle-bright-green)"></span><code class="hex">#D1E8A9</code></td><td class="usage">Bright green.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">brightYellow</code></td><td><span class="swatch" style="background: var(--gentle-bright-yellow)"></span><code class="hex">#DEBA87</code></td><td class="usage">Bright yellow.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">brightPurple</code></td><td><span class="swatch" style="background: var(--gentle-bright-purple)"></span><code class="hex">#B99BF2</code></td><td class="usage">Bright purple.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">brightMagenta</code></td><td><span class="swatch" style="background: var(--gentle-bright-magenta)"></span><code class="hex">#C99AD6</code></td><td class="usage">Bright magenta.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">brightBlue</code></td><td><span class="swatch" style="background: var(--gentle-bright-blue)"></span><code class="hex">#8FB8DD</code></td><td class="usage">Bright blue.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">selection</code></td><td><span class="swatch" style="background: var(--gentle-selection)"></span><code class="hex">#232A40</code></td><td class="usage">Selected background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">toolSuccessBg</code></td><td><span class="swatch" style="background: var(--gentle-tool-success-bg)"></span><code class="hex">#1a2e1a</code></td><td class="usage">Success tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">toolPendingBg</code></td><td><span class="swatch" style="background: var(--gentle-tool-pending-bg)"></span><code class="hex">#0d0f14</code></td><td class="usage">Pending tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">toolErrorBg</code></td><td><span class="swatch" style="background: var(--gentle-tool-error-bg)"></span><code class="hex">#2e1a1a</code></td><td class="usage">Error tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+        <tr><td><code class="token-name">infoBg</code></td><td><span class="swatch" style="background: var(--gentle-info-bg)"></span><code class="hex">#0d0f14</code></td><td class="usage">Info background.</td><td class="source-note" style="margin: 0;">themes/Gentle.json</td></tr>
+      </tbody>
+    </table>
+    <h3 id="gentleman-sexy-title">Gentleman-Sexy — hot-pink</h3>
+    <p class="source-note">Source: themes/Gentleman-Sexy.json</p>
+    <table class="palette-table">
+      <caption>Gentleman-Sexy tokens: 24 colors</caption>
+      <thead>
+        <tr><th scope="col">Token</th><th scope="col">Value</th><th scope="col">Usage</th><th scope="col">Source</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="token-name">bg</code></td><td><span class="swatch" style="background: var(--sexy-bg)"></span><code class="hex">#060407</code></td><td class="usage">Page background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">bgPanel</code></td><td><span class="swatch" style="background: var(--sexy-bg-panel)"></span><code class="hex">#100A0F</code></td><td class="usage">Panel background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">bgElement</code></td><td><span class="swatch" style="background: var(--sexy-bg-element)"></span><code class="hex">#100A0F</code></td><td class="usage">Element or card background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">userMessageBg</code></td><td><span class="swatch" style="background: var(--sexy-user-message-bg)"></span><code class="hex">#2E0F1F</code></td><td class="usage">User message surface.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">bgSubtle</code></td><td><span class="swatch" style="background: var(--sexy-bg-subtle)"></span><code class="hex">#100A0F</code></td><td class="usage">Subtle surface and custom message background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">border</code></td><td><span class="swatch" style="background: var(--sexy-border)"></span><code class="hex">#563040</code></td><td class="usage">Primary border and scrollbar thumb.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">borderSubtle</code></td><td><span class="swatch" style="background: var(--sexy-border-subtle)"></span><code class="hex">#2A1720</code></td><td class="usage">Subtle border and disabled thinking.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">text</code></td><td><span class="swatch" style="background: var(--sexy-text)"></span><code class="hex">#F6EFF3</code></td><td class="usage">Primary text.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">muted</code></td><td><span class="swatch" style="background: var(--sexy-muted)"></span><code class="hex">#A78E9B</code></td><td class="usage">Muted text.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">dim</code></td><td><span class="swatch" style="background: var(--sexy-dim)"></span><code class="hex">#76616B</code></td><td class="usage">Dim text.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">accent</code></td><td><span class="swatch" style="background: var(--sexy-accent)"></span><code class="hex">#F43888</code></td><td class="usage">Primary accent.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">deepPink</code></td><td><span class="swatch" style="background: var(--sexy-deep-pink)"></span><code class="hex">#BF0F50</code></td><td class="usage">Search match background and markdown quote border.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">activePink</code></td><td><span class="swatch" style="background: var(--sexy-active-pink)"></span><code class="hex">#FF4F9A</code></td><td class="usage">Active accent, links, list bullet, maximum thinking.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">champagne</code></td><td><span class="swatch" style="background: var(--sexy-champagne)"></span><code class="hex">#E0C27A</code></td><td class="usage">Custom message label, tool title, markdown heading/code, bash mode.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">violet</code></td><td><span class="swatch" style="background: var(--sexy-violet)"></span><code class="hex">#C49BFF</code></td><td class="usage">Syntax function and high thinking.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">pearl</code></td><td><span class="swatch" style="background: var(--sexy-pearl)"></span><code class="hex">#D2CBD0</code></td><td class="usage">Success.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">softRose</code></td><td><span class="swatch" style="background: var(--sexy-soft-rose)"></span><code class="hex">#D7A0B8</code></td><td class="usage">Syntax number.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">powderBlue</code></td><td><span class="swatch" style="background: var(--sexy-powder-blue)"></span><code class="hex">#A9C7EE</code></td><td class="usage">Syntax type and added diff.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">warning</code></td><td><span class="swatch" style="background: var(--sexy-warning)"></span><code class="hex">#F2B86D</code></td><td class="usage">Warning color.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">error</code></td><td><span class="swatch" style="background: var(--sexy-error)"></span><code class="hex">#FF718F</code></td><td class="usage">Error color and removed diff.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">selection</code></td><td><span class="swatch" style="background: var(--sexy-selection)"></span><code class="hex">#28121E</code></td><td class="usage">Selected background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">toolPendingBg</code></td><td><span class="swatch" style="background: var(--sexy-tool-pending-bg)"></span><code class="hex">#100A0F</code></td><td class="usage">Pending tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">toolSuccessBg</code></td><td><span class="swatch" style="background: var(--sexy-tool-success-bg)"></span><code class="hex">#151316</code></td><td class="usage">Success tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">toolErrorBg</code></td><td><span class="swatch" style="background: var(--sexy-tool-error-bg)"></span><code class="hex">#261019</code></td><td class="usage">Error tool output background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+        <tr><td><code class="token-name">infoBg</code></td><td><span class="swatch" style="background: var(--sexy-info-bg)"></span><code class="hex">#100A0F</code></td><td class="usage">Info background.</td><td class="source-note" style="margin: 0;">themes/Gentleman-Sexy.json</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="css-palettes" aria-labelledby="css-palettes-title">
+    <h2 id="css-palettes-title">CSS palettes</h2>
+    <h3 id="wizard-palette-title">Install wizard</h3>
+    <p class="source-note">Source: assets/install-wizard/wizard.css:8-24</p>
+    <table class="palette-table">
+      <caption>Install wizard tokens: 17 colors</caption>
+      <thead>
+        <tr><th scope="col">Token</th><th scope="col">Value</th><th scope="col">Usage</th><th scope="col">Source</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="token-name">--bg</code></td><td><span class="swatch" style="background: var(--wizard-bg)"></span><code class="hex">#1a1218</code></td><td class="usage">Page background.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--bg-deep</code></td><td><span class="swatch" style="background: var(--wizard-bg-deep)"></span><code class="hex">#000000</code></td><td class="usage">Deep background.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--surface</code></td><td><span class="swatch" style="background: var(--wizard-surface)"></span><code class="hex">#20161e</code></td><td class="usage">Surface.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--surface-1</code></td><td><span class="swatch" style="background: var(--wizard-surface-1)"></span><code class="hex">#241822</code></td><td class="usage">Elevated surface.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--surface-2</code></td><td><span class="swatch" style="background: var(--wizard-surface-2)"></span><code class="hex">#342230</code></td><td class="usage">Scrollbar surface.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--border</code></td><td><span class="swatch" style="background: var(--wizard-border)"></span><code class="hex">#342230</code></td><td class="usage">Border.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--border-soft</code></td><td><span class="swatch" style="background: var(--wizard-border-soft)"></span><code class="hex">#ffffff17</code></td><td class="usage">Soft border.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--text</code></td><td><span class="swatch" style="background: var(--wizard-text)"></span><code class="hex">#f6eff3</code></td><td class="usage">Text.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--text-muted</code></td><td><span class="swatch" style="background: var(--wizard-text-muted)"></span><code class="hex">#a78e9b</code></td><td class="usage">Muted text.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--text-faint</code></td><td><span class="swatch" style="background: var(--wizard-text-faint)"></span><code class="hex">#76616b</code></td><td class="usage">Faint text.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--accent</code></td><td><span class="swatch" style="background: var(--wizard-accent)"></span><code class="hex">#f095c8</code></td><td class="usage">Accent.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--accent-strong</code></td><td><span class="swatch" style="background: var(--wizard-accent-strong)"></span><code class="hex">#ff76c3</code></td><td class="usage">Strong accent.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--accent-soft</code></td><td><span class="swatch" style="background: var(--wizard-accent-soft)"></span><code class="hex">#ffb1dd</code></td><td class="usage">Soft accent.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--success</code></td><td><span class="swatch" style="background: var(--wizard-success)"></span><code class="hex">#b4e7c7</code></td><td class="usage">Success.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--warning</code></td><td><span class="swatch" style="background: var(--wizard-warning)"></span><code class="hex">#e0c27a</code></td><td class="usage">Warning.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--error</code></td><td><span class="swatch" style="background: var(--wizard-error)"></span><code class="hex">#ff718f</code></td><td class="usage">Error.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+        <tr><td><code class="token-name">--info</code></td><td><span class="swatch" style="background: var(--wizard-info)"></span><code class="hex">#a9c7ee</code></td><td class="usage">Info.</td><td class="source-note" style="margin: 0;">assets/install-wizard/wizard.css</td></tr>
+      </tbody>
+    </table>
+    <h3 id="canvas-palette-title">Design canvas</h3>
+    <p class="source-note">Source: assets/design-canvas/canvas.css:3-15</p>
+    <table class="palette-table">
+      <caption>Design canvas tokens: 13 colors</caption>
+      <thead>
+        <tr><th scope="col">Token</th><th scope="col">Value</th><th scope="col">Usage</th><th scope="col">Source</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code class="token-name">--gd-bg</code></td><td><span class="swatch" style="background: var(--gd-bg)"></span><code class="hex">#111214</code></td><td class="usage">Canvas background.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-stage</code></td><td><span class="swatch" style="background: var(--gd-stage)"></span><code class="hex">#1a1b1e</code></td><td class="usage">Stage background.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-panel</code></td><td><span class="swatch" style="background: var(--gd-panel)"></span><code class="hex">#222327</code></td><td class="usage">Panel background.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-border</code></td><td><span class="swatch" style="background: var(--gd-border)"></span><code class="hex">#3a3b40</code></td><td class="usage">Border.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-text</code></td><td><span class="swatch" style="background: var(--gd-text)"></span><code class="hex">#ececee</code></td><td class="usage">Text.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-muted</code></td><td><span class="swatch" style="background: var(--gd-muted)"></span><code class="hex">#a9abb2</code></td><td class="usage">Muted text.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-accent</code></td><td><span class="swatch" style="background: var(--gd-accent)"></span><code class="hex">#8ab4ff</code></td><td class="usage">Accent.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-accent-text</code></td><td><span class="swatch" style="background: var(--gd-accent-text)"></span><code class="hex">#0b1220</code></td><td class="usage">Accent text.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-danger</code></td><td><span class="swatch" style="background: var(--gd-danger)"></span><code class="hex">#ff9b9b</code></td><td class="usage">Danger.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-focus</code></td><td><span class="swatch" style="background: var(--gd-focus)"></span><code class="hex">#ffd479</code></td><td class="usage">Focus.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-pin</code></td><td><span class="swatch" style="background: var(--gd-pin)"></span><code class="hex">#8ab4ff</code></td><td class="usage">Pin.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-pin-resolved</code></td><td><span class="swatch" style="background: var(--gd-pin-resolved)"></span><code class="hex">#7d8a7f</code></td><td class="usage">Resolved pin.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+        <tr><td><code class="token-name">--gd-success</code></td><td><span class="swatch" style="background: var(--gd-success)"></span><code class="hex">#9be0a8</code></td><td class="usage">Success.</td><td class="source-note" style="margin: 0;">assets/design-canvas/canvas.css</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="type-scale" aria-labelledby="type-scale-title">
+    <h2 id="type-scale-title">Type scale</h2>
+    <p class="source-note">Sources: assets/install-wizard/wizard.css, assets/design-canvas/canvas.css, design/shell-rework/02-proposal.html</p>
+    <div class="type-scale">
+      <div class="type-item">
+        <p class="type-role">Shell terminal body</p>
+        <p class="type-meta">13px / 17px, normal, shell-rework terminal stack</p>
+        <p class="type-sample type-terminal-body">Install completed, all checks passed.</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Wizard body base</p>
+        <p class="type-meta">16px / 1.6, normal, install wizard sans stack</p>
+        <p class="type-sample type-wizard-base">Gentle Shell guides installation with clear, human-directed steps.</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Display headline</p>
+        <p class="type-meta">clamp(34px, 4.6vw, 58px) / 1.08, 800</p>
+        <h1 class="type-sample type-display">A calm terminal workspace for agent development</h1>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Section title</p>
+        <p class="type-meta">18px, 700</p>
+        <p class="type-sample type-section">Token scale</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Lead</p>
+        <p class="type-meta">clamp(17px, 1.6vw, 18px), normal</p>
+        <p class="type-sample type-lead">Use the recorded token values for every Gentle Shell surface.</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Card title</p>
+        <p class="type-meta">16px, 700</p>
+        <p class="type-sample type-card-title">Install</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Card body</p>
+        <p class="type-meta">15px, normal</p>
+        <p class="type-sample type-card-body">Review the selected theme before continuing.</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Inline code</p>
+        <p class="type-meta">.9em, normal, install wizard mono stack</p>
+        <p class="type-sample">Use <span class="type-inline-code">npm install</span> in the project root.</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Detail code</p>
+        <p class="type-meta">13px, normal, install wizard mono stack</p>
+        <p class="type-sample"><span class="type-detail-code">git status --short</span></p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Topbar note</p>
+        <p class="type-meta">12px / 1.4, 500</p>
+        <p class="type-sample type-topbar-note">Ready</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Stage label</p>
+        <p class="type-meta">12px / 1.2, 600</p>
+        <p class="type-sample type-stage-label">Step 2</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Eyebrow / label</p>
+        <p class="type-meta">12px / 1.4, 600</p>
+        <p class="type-sample type-eyebrow">Primary accent</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Plan step marker</p>
+        <p class="type-meta">12px / 1, 600</p>
+        <p class="type-sample type-plan-step-marker">01</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Step icon</p>
+        <p class="type-meta">12px / 1, 700</p>
+        <p class="type-sample"><span class="type-step-icon">✓</span></p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Step status</p>
+        <p class="type-meta">11px / 1.4, 600</p>
+        <p class="type-sample type-step-status">Completed</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Caption / log body</p>
+        <p class="type-meta">13px / 1.7, normal, install wizard mono stack</p>
+        <p class="type-sample type-caption-log">Checked workspace, installed dependencies, verified theme.</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Command line</p>
+        <p class="type-meta">16px / 1.4, normal, install wizard mono stack</p>
+        <p class="type-sample"><span class="type-command-line">npm run verify -- --workspace</span></p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Progress count</p>
+        <p class="type-meta">14px / 1.4, 600</p>
+        <p class="type-sample type-progress-count">12 / 20</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Wordmark mark</p>
+        <p class="type-meta">14px / 1, 700</p>
+        <p class="type-sample">GS</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Wordmark</p>
+        <p class="type-meta">18px, 800</p>
+        <p class="type-sample"><span class="type-wordmark">Gentle Shell</span></p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Canvas base</p>
+        <p class="type-meta">14px, normal, design canvas sans stack</p>
+        <p class="type-sample type-canvas-base">Canvas note</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Canvas title</p>
+        <p class="type-meta">15px, 600, design canvas sans stack</p>
+        <p class="type-sample">Design canvas</p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Canvas artboard title</p>
+        <p class="type-meta">16px, 600, design canvas sans stack</p>
+        <p class="type-sample"><span class="type-canvas-artboard-title">01-rose.html</span></p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Canvas meta / handoff</p>
+        <p class="type-meta">12px, normal, design canvas sans stack</p>
+        <p class="type-sample"><span class="type-canvas-meta">Artboard 1440 by 900</span></p>
+      </div>
+      <div class="type-item">
+        <p class="type-role">Canvas pin</p>
+        <p class="type-meta">12px, 700, design canvas sans stack</p>
+        <p class="type-sample"><span class="type-canvas-pin">Resolved</span></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="spacing-scale" aria-labelledby="spacing-scale-title">
+    <h2 id="spacing-scale-title">Spacing scale</h2>
+    <p class="source-note">Observed values from assets/install-wizard/wizard.css and assets/design-canvas/canvas.css</p>
+    <table class="palette-table">
+      <caption>Observed spacing values: 46 entries</caption>
+      <thead>
+        <tr><th scope="col">Value</th><th scope="col">Found in</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>1px</code></td><td class="usage">Border widths, hairline rules, hidden elements</td></tr>
+        <tr><td><code>2px</code></td><td class="usage">Focus outlines, shadow offsets</td></tr>
+        <tr><td><code>3px</code></td><td class="usage">Inset accent rings</td></tr>
+        <tr><td><code>4px</code></td><td class="usage">Small gaps and padding</td></tr>
+        <tr><td><code>5px</code></td><td class="usage">Topbar note padding</td></tr>
+        <tr><td><code>6px</code></td><td class="usage">Pill gaps, button padding, badge padding</td></tr>
+        <tr><td><code>8px</code></td><td class="usage">Common gap, padding, and shadow spread</td></tr>
+        <tr><td><code>9px</code></td><td class="usage">Small spacing values</td></tr>
+        <tr><td><code>10px</code></td><td class="usage">Wordmark gap, progress and layout gaps</td></tr>
+        <tr><td><code>11px</code></td><td class="usage">Small status text</td></tr>
+        <tr><td><code>12px</code></td><td class="usage">Label, gap, and padding value</td></tr>
+        <tr><td><code>13px</code></td><td class="usage">Caption, code, and meta text</td></tr>
+        <tr><td><code>14px</code></td><td class="usage">Wordmark mark, progress count, small label</td></tr>
+        <tr><td><code>15px</code></td><td class="usage">Card body and note text</td></tr>
+        <tr><td><code>16px</code></td><td class="usage">Topbar gap, card spacing, headline margin</td></tr>
+        <tr><td><code>17px</code></td><td class="usage">Terminal line height</td></tr>
+        <tr><td><code>18px</code></td><td class="usage">Section spacing and channel padding</td></tr>
+        <tr><td><code>20px</code></td><td class="usage">Footer and consent padding</td></tr>
+        <tr><td><code>22px</code></td><td class="usage">Card padding</td></tr>
+        <tr><td><code>24px</code></td><td class="usage">Main padding, grid spacing, panel padding</td></tr>
+        <tr><td><code>26px</code></td><td class="usage">Plan step marker height</td></tr>
+        <tr><td><code>28px</code></td><td class="usage">Blocker and rail spacing</td></tr>
+        <tr><td><code>30px</code></td><td class="usage">Shadow spread and error alert shadow</td></tr>
+        <tr><td><code>32px</code></td><td class="usage">Progress spacing and footer bottom padding</td></tr>
+        <tr><td><code>34px</code></td><td class="usage">Wordmark mark size</td></tr>
+        <tr><td><code>36px</code></td><td class="usage">Block spacing and glow hover blur</td></tr>
+        <tr><td><code>40px</code></td><td class="usage">Panel shadow blur</td></tr>
+        <tr><td><code>46px</code></td><td class="usage">Primary button minimum height</td></tr>
+        <tr><td><code>52px</code></td><td class="usage">Maximum panel padding</td></tr>
+        <tr><td><code>56px</code></td><td class="usage">Main bottom padding</td></tr>
+        <tr><td><code>58px</code></td><td class="usage">Maximum display headline size</td></tr>
+        <tr><td><code>60px</code></td><td class="usage">Panel shadow spread</td></tr>
+        <tr><td><code>80px</code></td><td class="usage">Design canvas world gap</td></tr>
+        <tr><td><code>96px</code></td><td class="usage">Screenshot preview maximum height</td></tr>
+        <tr><td><code>100px</code></td><td class="usage">Skip-link hidden top position</td></tr>
+        <tr><td><code>120px</code></td><td class="usage">Hero glow inset</td></tr>
+        <tr><td><code>160px</code></td><td class="usage">Screenshot preview maximum width</td></tr>
+        <tr><td><code>240px</code></td><td class="usage">Channel grid minimum column width</td></tr>
+        <tr><td><code>300px</code></td><td class="usage">Card grid minimum column width</td></tr>
+        <tr><td><code>340px</code></td><td class="usage">Design canvas panel maximum width</td></tr>
+        <tr><td><code>360px</code></td><td class="usage">Popover maximum width</td></tr>
+        <tr><td><code>380px</code></td><td class="usage">Progress body minimum column width</td></tr>
+        <tr><td><code>560px</code></td><td class="usage">Toast maximum width</td></tr>
+        <tr><td><code>600px</code></td><td class="usage">Maximum content width values</td></tr>
+        <tr><td><code>999px</code></td><td class="usage">Pill radius</td></tr>
+        <tr><td><code>1040px</code></td><td class="usage">Topbar/main/footer content width</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="radius-scale" aria-labelledby="radius-scale-title">
+    <h2 id="radius-scale-title">Radius samples</h2>
+    <p class="source-note">Sources: assets/install-wizard/wizard.css:25-28, assets/design-canvas/canvas.css</p>
+    <div class="radius-grid">
+      <div class="radius-item"><span class="radius-box"></span><p><code>--radius-sm: 8px</code></p></div>
+      <div class="radius-item"><span class="radius-box" style="border-radius: 12px"></span><p><code>--radius-md: 12px</code></p></div>
+      <div class="radius-item"><span class="radius-box" style="border-radius: 16px"></span><p><code>--radius-lg: 16px</code></p></div>
+      <div class="radius-item"><span class="radius-box radius-pill"></span><p><code>--radius-pill: 999px</code></p></div>
+      <div class="radius-item"><span class="radius-box" style="width: 52px; height: 52px; border-radius: 4px"></span><p><code>4px</code></p></div>
+      <div class="radius-item"><span class="radius-box" style="width: 52px; height: 16px; border-radius: 6px"></span><p><code>6px</code></p></div>
+      <div class="radius-item"><span class="radius-box"></span><p><code>8px</code></p></div>
+      <div class="radius-item"><span class="radius-box" style="height: 32px; border-radius: 10px"></span><p><code>10px</code></p></div>
+      <div class="radius-item"><span class="radius-box radius-odd"></span><p><code>13px 13px 13px 2px</code></p></div>
+      <div class="radius-item"><span class="radius-box radius-round"></span><p><code>50%</code></p></div>
+    </div>
+  </section>
+
+  <section id="shadow-scale" aria-labelledby="shadow-scale-title">
+    <h2 id="shadow-scale-title">Shadow samples</h2>
+    <p class="source-note">Sources: assets/install-wizard/wizard.css:30-32, assets/design-canvas/canvas.css</p>
+    <div class="shadow-grid">
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--glow)"></span><p>Primary glow: <code>0 10px 30px #f095c84d</code></p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--glow-hover)"></span><p>Hover glow: <code>0 14px 36px #f095c86b</code></p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-panel)"></span><p>Main panel shadow</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-wordmark-mark)"></span><p>Wordmark mark shadow</p></div>
+      <div class="shadow-item"><span class="shadow-ring" style="box-shadow: var(--shadow-stage-ring)"></span><p>Current stage ring and glow</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-accent-inset)"></span><p>Accent disclosure inset highlight</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-error)"></span><p>Error alert shadow</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="height: 16px; box-shadow: var(--shadow-progress-value)"></span><p>Progress value glow</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-log-inset)"></span><p>Log inset highlight</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-canvas-artboard)"></span><p>Canvas artboard and frame shadow</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-shield-hint)"></span><p>Shield hint shadow</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-back-button)"></span><p>Back button shadow</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-popover-toast)"></span><p>Popover and toast shadow</p></div>
+      <div class="shadow-item"><span class="shadow-ring" style="box-shadow: var(--shadow-chosen-artboard)"></span><p>Chosen artboard frame</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-shield-hover)"></span><p>Shield hover inset accent</p></div>
+      <div class="shadow-item"><span class="shadow-box" style="box-shadow: var(--shadow-shield-focus)"></span><p>Shield focus inset focus color</p></div>
+    </div>
+  </section>
+
+  <section id="components" aria-labelledby="components-title">
+    <h2 id="components-title">Core components</h2>
+    <p class="source-note">Rules from assets/install-wizard/wizard.css and assets/design-canvas/canvas.css</p>
+    <div class="component-grid">
+      <article class="component-card">
+        <h3>Buttons</h3>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary">Install Gentle Shell</button>
+          <button type="button" class="btn btn-secondary">Review tokens</button>
+          <button type="button" class="btn" disabled>Blocked by review</button>
+        </div>
+      </article>
+      <article class="component-card">
+        <h3>Cards</h3>
+        <div class="card-stack">
+          <article class="card">
+            <h3>Install</h3>
+            <p>Review the selected theme before continuing.</p>
+          </article>
+          <article class="card">
+            <h3>Verify</h3>
+            <p>Run focused checks after each work unit.</p>
+          </article>
+        </div>
+      </article>
+      <article class="component-card">
+        <h3>Alerts</h3>
+        <div class="alert-stack">
+          <div class="alert alert-info" role="status" aria-live="polite">Info: token artboard updated.</div>
+          <div class="alert alert-success" role="status" aria-live="polite">Success: all checks passed.</div>
+          <div class="alert alert-warning" role="status" aria-live="polite">Warning: one source path needs review.</div>
+          <div class="alert alert-error" role="alert" aria-live="assertive">Error: token mismatch found.</div>
+        </div>
+      </article>
+      <article class="component-card">
+        <h3>Pills and labels</h3>
+        <div class="pill-row">
+          <span class="pill">Gentle</span>
+          <span class="pill pill-accent">Gentleman-Cute</span>
+          <span class="pill">Rose</span>
+          <span class="pill">1440px</span>
+          <span class="pill pill-accent">Primary</span>
+          <span class="pill">Canvas</span>
+        </div>
+      </article>
+      <article class="component-card">
+        <h3>Progress</h3>
+        <p>Install verification is almost complete.</p>
+        <div class="progress" role="progressbar" aria-valuenow="12" aria-valuemin="0" aria-valuemax="20" aria-label="Install verification progress">
+          <div class="progress-track"><div class="progress-value"></div></div>
+          <span class="progress-count">12 / 20</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="brand-assets" aria-labelledby="brand-assets-title">
+    <h2 id="brand-assets-title">Logo / brand assets</h2>
+    <p class="source-note">Source: assets/gentle-logo-only.png, docs/assets/brand/*, docs/assets/features/*</p>
+    <section class="brand-section" aria-labelledby="inline-assets-title">
+      <h3 id="inline-assets-title">Inline SVG brand assets</h3>
+      <figure class="brand-banner">
+        <svg role="img" aria-labelledby="banner-title banner-desc" width="1200" height="400" viewBox="0 0 1200 400">
+          <title id="banner-title">GENTLE-PI — Pi-native development environment</title>
+          <desc id="banner-desc">A dark plum banner with a narrow monospaced GENTLE-PI wordmark, a geometric terminal symbol without rose imagery, and the promise of clear, human-directed development.</desc>
+          <defs>
+            <linearGradient id="banner-bg" x1="0" y1="0" x2="1" y2="1">
+              <stop stop-color="#120d16"/>
+              <stop offset=".55" stop-color="#251124"/>
+              <stop offset="1" stop-color="#0b0910"/>
+            </linearGradient>
+            <linearGradient id="banner-rule" x1="0" x2="1">
+              <stop stop-color="#f095c8" stop-opacity="0"/>
+              <stop offset=".18" stop-color="#f095c8"/>
+              <stop offset=".72" stop-color="#d7a0b8"/>
+              <stop offset="1" stop-color="#f095c8" stop-opacity="0"/>
+            </linearGradient>
+            <radialGradient id="banner-glow">
+              <stop stop-color="#f095c8" stop-opacity=".28"/>
+              <stop offset="1" stop-color="#f095c8" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="1200" height="400" rx="20" fill="url(#banner-bg)"/>
+          <path d="M54 74H1146M54 328H1146" stroke="url(#banner-rule)" stroke-width="2"/>
+          <path d="M58 126H540" stroke="#f095c8" stroke-opacity=".35" stroke-width="2"/>
+          <g aria-label="GENTLE-PI" fill="none" stroke="#fff7f1" stroke-width="6" stroke-linecap="square" stroke-linejoin="miter">
+            <path d="M98 144H68V206H98V182H84"/>
+            <path d="M150 144H120V206H150M120 175H145"/>
+            <path d="M172 206V144L202 206V144"/>
+            <path d="M220 144H262M241 144V206"/>
+            <path d="M284 144V206H316"/>
+            <path d="M368 144H338V206H368M338 175H363"/>
+            <path d="M390 175H432"/>
+            <path d="M454 206V144H477L486 153V170L477 179H454"/>
+            <path d="M508 144H538M523 144V206M508 206H538"/>
+          </g>
+          <text x="62" y="267" class="banner-text">Powerful agents. One complete workspace.</text>
+          <g transform="translate(838 74)">
+            <circle cx="142" cy="126" r="142" fill="url(#banner-glow)"/>
+            <circle cx="142" cy="126" r="105" fill="none" stroke="#f095c8" stroke-opacity=".28" stroke-width="2"/>
+            <circle cx="142" cy="126" r="76" fill="none" stroke="#f095c8" stroke-opacity=".55" stroke-width="3" stroke-dasharray="4 11"/>
+            <path d="M142 5V28M142 224V247M21 126H44M240 126H263" stroke="#f095c8" stroke-width="3" stroke-linecap="round"/>
+            <rect x="76" y="75" width="132" height="102" rx="10" fill="#120d16" stroke="#f095c8" stroke-width="3"/>
+            <path d="M103 105l22 21-22 21M143 147h38" fill="none" stroke="#fff7f1" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M91 58L106 43M193 58l-15-15M91 194l15 15M193 194l-15 15" stroke="#d7a0b8" stroke-width="3" stroke-linecap="round"/>
+          </g>
+        </svg>
+        <figcaption class="fig-caption">Gentle-PI banner — docs/assets/brand/gentle-pi-banner.svg</figcaption>
+      </figure>
+      <figure class="brand-divider">
+        <svg role="img" aria-labelledby="divider-title divider-desc" width="480" height="40" viewBox="0 0 480 40">
+          <title id="divider-title">Decorative terminal separator</title>
+          <desc id="divider-desc">Fading pink rules frame a terminal prompt symbol.</desc>
+          <defs>
+            <linearGradient id="fade-in" x1="0" x2="1">
+              <stop offset="0" stop-color="#f095c8" stop-opacity="0"/>
+              <stop offset="1" stop-color="#f095c8" stop-opacity="0.62"/>
+            </linearGradient>
+            <linearGradient id="fade-out" x1="0" x2="1">
+              <stop offset="0" stop-color="#f095c8" stop-opacity="0.62"/>
+              <stop offset="1" stop-color="#f095c8" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M16 20H212" fill="none" stroke="url(#fade-in)" stroke-width="1.25"/>
+          <path d="M268 20H464" fill="none" stroke="url(#fade-out)" stroke-width="1.25"/>
+          <path d="M222 13L233 20L222 27M243 27H258" fill="none" stroke="#f095c8" stroke-linecap="square" stroke-linejoin="miter" stroke-width="1.5"/>
+        </svg>
+        <figcaption class="fig-caption">Terminal divider — docs/assets/brand/terminal-divider.svg</figcaption>
+      </figure>
+      <section aria-labelledby="local-assets-title">
+        <h3 id="local-assets-title">Repository-relative brand images</h3>
+        <table class="palette-table">
+          <caption>Brand assets: 10 files</caption>
+          <thead>
+            <tr><th scope="col">File</th><th scope="col">Format</th><th scope="col">Role</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>assets/gentle-logo-only.png</code></td><td><code>PNG</code></td><td class="usage">Gentle Shell logo; Pi package image.</td></tr>
+            <tr><td><code>docs/assets/brand/gentle-shell-banner.gif</code></td><td><code>GIF</code></td><td class="usage">Gentle Shell banner.</td></tr>
+            <tr><td><code>docs/assets/brand/gentle-pi-banner.svg</code></td><td><code>SVG</code></td><td class="usage">Gentle-PI banner.</td></tr>
+            <tr><td><code>docs/assets/brand/terminal-divider.svg</code></td><td><code>SVG</code></td><td class="usage">Terminal divider.</td></tr>
+            <tr><td><code>docs/assets/features/audio-notifications.png</code></td><td><code>PNG</code></td><td class="usage">Feature thumbnail: audio notifications.</td></tr>
+            <tr><td><code>docs/assets/features/gentle-shell.png</code></td><td><code>PNG</code></td><td class="usage">Feature thumbnail: Gentle Shell.</td></tr>
+            <tr><td><code>docs/assets/features/agents-view.png</code></td><td><code>PNG</code></td><td class="usage">Feature thumbnail: agents view.</td></tr>
+            <tr><td><code>docs/assets/features/command-palette.png</code></td><td><code>PNG</code></td><td class="usage">Feature thumbnail: command palette.</td></tr>
+            <tr><td><code>docs/assets/features/changes-view.png</code></td><td><code>PNG</code></td><td class="usage">Feature thumbnail: changes view.</td></tr>
+            <tr><td><code>docs/assets/features/profiles-routing.png</code></td><td><code>PNG</code></td><td class="usage">Feature thumbnail: profiles routing.</td></tr>
+          </tbody>
+        </table>
+        <div class="asset-grid">
+          <figure class="asset-item logo-item">
+            <img src="assets/gentle-logo-only.png" alt="Gentle Shell logo" width="96" height="96">
+            <p class="fig-caption">assets/gentle-logo-only.png</p>
+          </figure>
+          <figure class="asset-item banner-gif-item">
+            <img src="docs/assets/brand/gentle-shell-banner.gif" alt="Gentle Shell animated banner" width="1040" height="120">
+            <p class="fig-caption">docs/assets/brand/gentle-shell-banner.gif</p>
+          </figure>
+          <figure class="asset-item">
+            <img src="docs/assets/features/audio-notifications.png" alt="Audio notifications feature thumbnail" width="240" height="120">
+            <p class="fig-caption">audio-notifications.png</p>
+          </figure>
+          <figure class="asset-item">
+            <img src="docs/assets/features/gentle-shell.png" alt="Gentle Shell feature thumbnail" width="240" height="120">
+            <p class="fig-caption">gentle-shell.png</p>
+          </figure>
+          <figure class="asset-item">
+            <img src="docs/assets/features/agents-view.png" alt="Agents view feature thumbnail" width="240" height="120">
+            <p class="fig-caption">agents-view.png</p>
+          </figure>
+          <figure class="asset-item">
+            <img src="docs/assets/features/command-palette.png" alt="Command palette feature thumbnail" width="240" height="120">
+            <p class="fig-caption">command-palette.png</p>
+          </figure>
+          <figure class="asset-item">
+            <img src="docs/assets/features/changes-view.png" alt="Changes view feature thumbnail" width="240" height="120">
+            <p class="fig-caption">changes-view.png</p>
+          </figure>
+          <figure class="asset-item">
+            <img src="docs/assets/features/profiles-routing.png" alt="Profiles routing feature thumbnail" width="240" height="120">
+            <p class="fig-caption">profiles-routing.png</p>
+          </figure>
+        </div>
+      </section>
+    </section>
+  </section>
+</main>
+<footer role="contentinfo">
+  <p>Built from Gentle Shell project sources: <code>themes/Gentleman-Cute.json</code>, <code>themes/Gentle.json</code>, <code>themes/Gentleman-Sexy.json</code>, <code>assets/install-wizard/wizard.css</code>, <code>assets/design-canvas/canvas.css</code>, and repository brand assets.</p>
+</footer>
+</body>
+</html>
+</content>
